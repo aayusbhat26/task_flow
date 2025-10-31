@@ -1,5 +1,5 @@
-// Custom UseCase type since Prisma schema only has WORK and STUDY
-export type UseCase = "WORK" | "STUDY" | "PERSONAL_USE";
+// Custom UseCase type - only STUDY is supported in onboarding
+export type UseCase = "STUDY";
 
 export enum ActionType {
   CHANGE_SITE = "CHANGE_SITE",

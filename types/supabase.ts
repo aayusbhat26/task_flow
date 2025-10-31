@@ -883,7 +883,7 @@ export type Database = {
         | "DIGITAL"
         | "FANCY"
         | "BELL"
-      UseCase: "WORK" | "STUDY" | "PERSONAL_USE"
+      UseCase: "STUDY"
       UserPermission: "ADMIN" | "CAN_EDIT" | "READ_ONLY" | "OWNER"
     }
     CompositeTypes: {

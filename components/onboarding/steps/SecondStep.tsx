@@ -3,27 +3,24 @@ import { useOnboardingForm } from "@/context/OnboardingForm";
 import { ActionType } from "@/types/onBoardingContext";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const useCases = [
   {
-    case: "WORK",
-    title: "SECOND_STEP.WORK",
-  },
-  {
     case: "STUDY",
     title: "SECOND_STEP.STUDY",
-  },
-  {
-    case: "PERSONAL_USE",
-    title: "SECOND_STEP.PERSONAL",
   },
 ];
 
 export const SecondStep = () => {
   const { currentStep, dispatch } = useOnboardingForm();
-  const [selectedUseCase, setSelectedUseCase] = useState<string | undefined>(undefined);
+  const [selectedUseCase, setSelectedUseCase] = useState<string>("STUDY");
   const t = useTranslations("ONBOARDING_FORM");
+
+  // Auto-select STUDY on component mount
+  useEffect(() => {
+    dispatch({ type: ActionType.USECASE, payload: "STUDY" });
+  }, [dispatch]);
 
   const handleUseCaseSelect = (useCase: string) => {
     setSelectedUseCase(useCase);
@@ -46,11 +43,11 @@ export const SecondStep = () => {
           {t("SECOND_STEP.INFO")}
         </p>
       </div>
-      
+
       <div className="max-w-md w-full space-y-8 mt-14">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-center">Select your use case</h3>
-          
+
           <div className="flex flex-col space-y-3">
             {useCases.map((useCase) => (
               <div
@@ -77,9 +74,8 @@ export const SecondStep = () => {
             ))}
           </div>
         </div>
-        
+
         <Button
-          disabled={!selectedUseCase}
           onClick={handleSubmit}
           className="mt-10 w-full max-w-md dark:text-white font-semibold"
         >

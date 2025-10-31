@@ -1,105 +1,43 @@
-import { getAuthSession } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { onboardingSchema } from "@/schema/onboardingSchema";
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { UseCase as UseCaseType } from "@prisma/client";
-import { v4 as uuidv4 } from "uuid";
-import { getRandomWorkspaceColor } from "@/lib/getRandomWorkspaceColor";
+import { getAuthSession } from "@/lib/auth";
+
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://localhost:3003";
 
 export async function POST(request: Request) {
-  const session = await getAuthSession();
-
-  if (!session?.user) {
-    return new Response("Unauthorized", {
-      status: 400,
-      statusText: "Unauthorized User",
-    });
-  }
-
-  const body: unknown = await request.json();
-
-  const result = onboardingSchema.safeParse(body);
-
-  if (!result.success) {
-    return NextResponse.json("ERRORS.WRONG_DATA", { status: 401 });
-  }
-
-  const { 
-    useCase, 
-    workspaceName, 
-    name, 
-    surname, 
-    workspaceImage,
-    leetcodeUsername,
-    codeforcesUsername,
-    codechefUsername,
-    githubUsername,
-    redditUsername
-  } = result.data;
-
   try {
-    const user = await db.user.findUnique({
-      where: {
-        id: session.user.id,
-      },
-    });
+    // Get current session to extract user ID
+    const session = await getAuthSession();
 
-    if (!user) {
-      return new NextResponse("ERRORS.NO_USER_API", {
-        status: 404,
-        statusText: "User not Found",
-      });
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    // Update user with onboarding data
-    await db.user.update({
-      where: {
-        id: session.user.id,
+    const body = await request.json();
+
+    // Forward the request to auth service with user ID
+    const response = await fetch(`${AUTH_SERVICE_URL}/api/onboarding`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": session.user.id,
       },
-      data: {
-        completedOnboarding: true,
-        name,
-        surname,
-        ...(useCase ? { useCase: useCase as UseCaseType } : {}),
-        // Store external service usernames in user profile or separate table
-        // For now, we'll store them as JSON in a custom field or create a separate table
-      },
+      body: JSON.stringify({
+        ...body,
+        userId: session.user.id,
+      }),
     });
 
-    const workspace = await db.workspace.create({
-      data: {
-        creatorId: user.id,
-        name: workspaceName,
-        image: workspaceImage,
-        inviteCode: uuidv4(),
-        adminCode: uuidv4(),
-        canEditCode: uuidv4(),
-        readOnlyCode: uuidv4(),
-        color: getRandomWorkspaceColor(),
-      },
-    });
+    const data = await response.json();
 
-    await db.subscription.create({
-      data: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        userRole: "OWNER",
-      },
-    });
-
-    await db.pomodoroSettings.create({
-      data: {
-        userId: user.id,
-      },
-    });
-
-    // TODO: Store external service usernames in a separate table or user profile
-    // This would require creating a new table or extending the user profile
-
-    return NextResponse.json("OK", { status: 200 });
-  } catch (err) {
-  console.error("Onboarding DB error:", err);
-  return NextResponse.json("ERRORS.DB_ERROR", { status: 405 });
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    console.error("Onboarding proxy error:", error);
+    return NextResponse.json(
+      { error: "Failed to connect to auth service" },
+      { status: 503 }
+    );
   }
 }

@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Markdown documentation files (keep README.md)
+*.md
+!README.md
+
 # IDE and editor files
 .vscode/
 .idea/

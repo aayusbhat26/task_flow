@@ -7,12 +7,13 @@
   <img src="https://img.shields.io/badge/Prisma-5.21.1-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/Socket.io-Real--time-010101?style=for-the-badge&logo=socket.io&logoColor=white" alt="Socket.io" />
   <img src="https://img.shields.io/badge/Google-Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini" />
+  <img src="https://img.shields.io/badge/Microservices-Architecture-orange?style=for-the-badge&logo=micro.blog&logoColor=white" alt="Microservices" />
 </div>
 
 <br />
 
 <div align="center">
-  <h3>A comprehensive productivity and collaboration platform built with modern web technologies</h3>
+  <h3>A comprehensive productivity and collaboration platform built with modern web technologies and microservices architecture</h3>
   <p>Streamline your workflow with intelligent task management, real-time collaboration, and gamified productivity tracking.</p>
 </div>
 
@@ -20,7 +21,7 @@
 
 ## ✨ Features Overview
 
-TaskFlow is a full-stack productivity platform that combines task management, mind mapping, time tracking, and collaboration tools into one seamless experience. Built with Next.js 14 and powered by advanced features like real-time synchronization, AI integration, and a comprehensive gamification system.
+TaskFlow is a full-stack productivity platform that combines task management, mind mapping, time tracking, and collaboration tools into one seamless experience. Built with Next.js 14, microservices architecture, and powered by advanced features like real-time synchronization, AI integration, and a comprehensive gamification system.
 
 ### 🎯 Core Features
 
@@ -33,6 +34,21 @@ TaskFlow is a full-stack productivity platform that combines task management, mi
 - **Calendar Integration** - Unified calendar view for tasks and deadlines
 - **Notes System** - Rich text notes with collaboration features
 - **Chat System** - Real-time messaging within workspaces
+- **🔐 Dedicated Auth Service** - Separate microservice for authentication and onboarding
+
+---
+
+## 🏗️ Architecture
+
+TaskFlow uses a **microservices architecture** for better scalability and maintainability:
+
+- **Main App** (Port 3000) - Next.js frontend and core features
+- **Auth Service** (Port 3003) - Authentication, OAuth, and onboarding
+- **Socket Server** (Port 3002) - Real-time communication
+- **Redis** (Port 6379) - Caching and session storage
+- **PostgreSQL** (Port 5432) - Shared database for main app and auth service
+
+📖 See [MICROSERVICES_ARCHITECTURE.md](./MICROSERVICES_ARCHITECTURE.md) for detailed architecture documentation.
 
 ---
 
@@ -47,12 +63,14 @@ TaskFlow is a full-stack productivity platform that combines task management, mi
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
 
-### Backend
+### Backend & Microservices
 - **Runtime**: Node.js
+- **Frameworks**: Next.js API Routes, Express.js
 - **Database**: PostgreSQL
 - **ORM**: Prisma
-- **Authentication**: NextAuth.js
+- **Authentication**: NextAuth.js + JWT
 - **Real-time**: Socket.io
+- **Cache**: Redis
 - **File Upload**: UploadThing
 - **Email**: Nodemailer
 
@@ -70,6 +88,7 @@ TaskFlow is a full-stack productivity platform that combines task management, mi
 
 - Node.js 18+ installed
 - PostgreSQL database
+- Redis (optional, for development)
 - Git
 
 ### Installation
@@ -80,40 +99,48 @@ TaskFlow is a full-stack productivity platform that combines task management, mi
    cd TaskFlow
    ```
 
-2. **Install dependencies**
+2. **Install dependencies for all services**
    ```bash
    npm install
+   cd auth-service
+   npm install
+   cd ..
    ```
 
 3. **Set up environment variables**
    ```bash
-   cp env.example .env.local
+   cp env.example .env
+   cp auth-service/.env.example auth-service/.env
    ```
-   
-   Fill in your environment variables:
+
+   Update `.env` with your configuration:
    ```env
    # Database
    DATABASE_URL="postgresql://username:password@localhost:5432/taskflow"
    DIRECT_URL=""
 
+   # Microservices
+   AUTH_SERVICE_URL="http://localhost:3003"
+   NEXT_PUBLIC_SOCKET_URL="http://localhost:3002"
+
    # Authentication
    NEXTAUTH_SECRET="your-secret-key"
    NEXTAUTH_URL="http://localhost:3000"
-   
+
    # OAuth Providers
    GOOGLE_CLIENT_ID="your-google-client-id"
    GOOGLE_CLIENT_SECRET="your-google-client-secret"
    GITHUB_CLIENT_ID="your-github-client-id"
    GITHUB_CLIENT_SECRET="your-github-client-secret"
-   
+
    # Socket.io
    NEXT_PUBLIC_SOCKET_URL="http://localhost:3002"
    SOCKET_PORT=3002
    NEXT_PUBLIC_APP_URL="http://localhost:3000"
-   
+
    # File Upload
    UPLOADTHING_TOKEN="your-uploadthing-token"
-   
+
    # Optional: Supabase
    NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
@@ -123,22 +150,59 @@ TaskFlow is a full-stack productivity platform that combines task management, mi
    ```bash
    npx prisma migrate dev
    npx prisma generate
+
+   # Generate Prisma client for auth service
+   cd auth-service
+   npx prisma generate --schema=../prisma/schema.prisma
+   cd ..
    ```
 
-5. **Start the development server**
+5. **Start all services**
+
+   **Option A: Manual start (Recommended for development)**
    ```bash
+   # Use the startup script
+   start-all-services.bat  # Windows
+   # or
+   ./start-all-services.sh  # Linux/Mac
+
+   # Then open separate terminals for each service:
+
+   # Terminal 1 - Main App
    npm run dev
-   ```
 
-6. **Start the Socket.io server** (in a separate terminal)
-   ```bash
+   # Terminal 2 - Auth Service
+   cd auth-service
+   npm run dev
+
+   # Terminal 3 - Socket Server (if needed)
    cd socket-server
-   npm install
    npm start
    ```
 
-7. **Access the application**
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+   **Option B: Docker Compose**
+   ```bash
+   docker-compose --profile dev up
+   ```
+
+6. **Access the application**
+   - Main App: [http://localhost:3000](http://localhost:3000)
+   - Auth Service: [http://localhost:3003/health](http://localhost:3003/health)
+   - Socket Server: [http://localhost:3002](http://localhost:3002)
+
+---
+
+## 🔐 Authentication Microservice
+
+TaskFlow uses a dedicated authentication microservice for handling all auth-related operations:
+
+- **Registration**: Email/password user registration
+- **Login**: JWT-based authentication
+- **OAuth**: Google, GitHub, and Apple sign-in
+- **Onboarding**: New user onboarding flow
+- **Shared Database**: Uses the same PostgreSQL database as the main app
+
+📖 See [AUTH_MICROSERVICE_MIGRATION.md](./AUTH_MICROSERVICE_MIGRATION.md) for migration details and API documentation.
 
 ---
 
@@ -214,7 +278,7 @@ Stay motivated with a comprehensive points and achievements system.
 
 #### Point Earning:
 - **Task Completion**: 5 points per task
-- **Pomodoro Sessions**: 
+- **Pomodoro Sessions**:
   - 25 minutes: 10 points
   - 30-40 minutes: 20 points
   - 60+ minutes: 45 points

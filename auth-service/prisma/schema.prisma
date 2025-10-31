@@ -1,0 +1,1245 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                       String               @id @default(cuid())
+  name                     String?
+  email                    String?              @unique
+  emailVerified            DateTime?
+  hashedPassword           String?
+  image                    String?
+  surname                  String?
+  username                 String               @unique
+  completedOnboarding      Boolean              @default(false)
+  useCase                  UseCase?
+  isOnline                 Boolean              @default(false)
+  lastSeen                 DateTime?
+  points                   Int                  @default(0)
+  currentStreak            Int                  @default(0)
+  currentTitle             String?
+  experience               Int                  @default(0)
+  lastActivityDate         DateTime?
+  level                    Int                  @default(1)
+  longestStreak            Int                  @default(0)
+  profileBadges            String[]             @default([])
+  totalPomodoroCompleted   Int                  @default(0)
+  totalTasksCompleted      Int                  @default(0)
+  totalNotesCreated        Int                  @default(0)
+  accounts                 Account?
+  calendarAttendees        CalendarAttendee[]
+  calendarEvents           CalendarEvent[]
+  calendarTemplates        CalendarTemplate[]
+  chatMessages             ChatMessage[]
+  dsaProgress              DSAProgress[]
+  importedDSAQuestions     DSAQuestion[]        @relation("ImportedDSAQuestions")
+  EmailAnalytics           EmailAnalytics[]
+  EmailCampaign            EmailCampaign[]
+  EmailSettings            EmailSettings?
+  EmailTemplate            EmailTemplate[]
+  fileAttachments          FileAttachment[]
+  leaderboardEntries       LeaderboardEntry[]
+  createdMindMaps          MindMap[]            @relation("MindMapCreatedByUser")
+  updatedMindMaps          MindMap[]            @relation("MindMapUpdatedByUser")
+  notes                    Note[]
+  noteBlocks               NoteBlock[]
+  noteCollaborations       NoteCollaborator[]
+  noteHistory              NoteHistory[]
+  userCreatedNotifications Notification[]       @relation("NotifyCreator")
+  userNotifications        Notification[]       @relation("NotifyUser")
+  pointsSpent              PointPurchase[]
+  pointTransactions        PointTransaction[]
+  pomodoroSessions         PomodoroSession[]
+  pomodoroSettings         PomodoroSettings[]
+  sessions                 Session?
+  subscriptions            Subscription[]
+  createdTasks             Task[]               @relation("TaskCreatedByUser")
+  updatedTasks             Task[]               @relation("TaskUpdatedByUser")
+  taskComments             TaskComment[]
+  taskTimeEntries          TaskTimeEntry[]
+  timeBlocks               TimeBlock[]
+  userAchievements         UserAchievement[]
+  userChallenges           UserChallenge[]
+  userSettings             UserSettings?
+  userStreaks              UserStreak[]
+  submissionData           UserSubmissionData[]
+  createdWorkspaces        Workspace[]          @relation("CreatedBy")
+  assignedToMindMap        assignedToMindMap[]
+  assignedToTask           assignedToTask[]
+  savedMindMaps            savedMindMaps[]
+  savedTask                savedTask[]
+}
+
+model savedMindMaps {
+  id        String  @id @default(cuid())
+  userId    String
+  mindMapId String
+  mindMap   MindMap @relation(fields: [mindMapId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  type              String
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String   @unique
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+}
+
+model Notification {
+  id              String          @id @default(cuid())
+  userId          String
+  notifyCreatorId String
+  workspaceId     String
+  clicked         Boolean         @default(false)
+  createdDate     DateTime        @default(now())
+  notifyType      NotifyType
+  newUserRole     UserPermission?
+  taskId          String?
+  mindMapId       String?
+  seen            Boolean         @default(false)
+  notifyCreator   User            @relation("NotifyCreator", fields: [notifyCreatorId], references: [id], onDelete: Cascade)
+  user            User            @relation("NotifyUser", fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model FileAttachment {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  key          String
+  uploadedById String
+  createdAt    DateTime @default(now())
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id               String            @id @default(cuid())
+  name             String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  creatorId        String?
+  image            String?
+  adminCode        String            @unique
+  canEditCode      String            @unique
+  inviteCode       String            @unique
+  readOnlyCode     String            @unique
+  color            CustomColors      @default(BLUE)
+  calendarEvents   CalendarEvent[]
+  chatMessages     ChatMessage[]
+  mindMaps         MindMap[]
+  notes            Note[]
+  notification     Notification[]
+  pomodoroSessions PomodoroSession[]
+  subscribers      Subscription[]
+  tags             Tag[]
+  tasks            Task[]
+  timeBlocks       TimeBlock[]
+  Creator          User?             @relation("CreatedBy", fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id             String           @id @default(cuid())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  updatedUserId  String?
+  creatorId      String
+  workspaceId    String
+  title          String
+  emoji          String           @default("1f9e0")
+  content        Json?
+  dateId         String?
+  completedAt    DateTime?
+  isCompleted    Boolean          @default(false)
+  actualHours    Float?           @default(0)
+  estimatedHours Float?
+  isRecurring    Boolean          @default(false)
+  isTemplate     Boolean          @default(false)
+  parentTaskId   String?
+  priority       TaskPriority     @default(MEDIUM)
+  recurringData  Json?
+  recurringType  RecurringType?
+  startedAt      DateTime?
+  status         TaskStatus       @default(TODO)
+  templateId     String?
+  calendarEvents CalendarEvent[]
+  creator        User             @relation("TaskCreatedByUser", fields: [creatorId], references: [id], onDelete: Cascade)
+  taskDate       TaskDate?        @relation(fields: [dateId], references: [id], onDelete: Cascade)
+  parentTask     Task?            @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subTasks       Task[]           @relation("TaskHierarchy")
+  template       Task?            @relation("TaskTemplate", fields: [templateId], references: [id])
+  basedOn        Task[]           @relation("TaskTemplate")
+  updatedBy      User?            @relation("TaskUpdatedByUser", fields: [updatedUserId], references: [id], onDelete: Cascade)
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  comments       TaskComment[]
+  dependsOn      TaskDependency[] @relation("DependentTask")
+  dependents     TaskDependency[] @relation("PrerequisiteTask")
+  timeEntries    TaskTimeEntry[]
+  assignedToTask assignedToTask[]
+  savedTask      savedTask[]
+  tags           Tag[]            @relation("TagToTask")
+}
+
+model TaskDependency {
+  id                 String         @id @default(cuid())
+  dependentTaskId    String
+  prerequisiteTaskId String
+  dependencyType     DependencyType @default(FINISH_TO_START)
+  createdAt          DateTime       @default(now())
+  dependentTask      Task           @relation("DependentTask", fields: [dependentTaskId], references: [id], onDelete: Cascade)
+  prerequisiteTask   Task           @relation("PrerequisiteTask", fields: [prerequisiteTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentTaskId, prerequisiteTaskId])
+  @@index([dependentTaskId])
+  @@index([prerequisiteTaskId])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model TaskTimeEntry {
+  id          String    @id @default(cuid())
+  taskId      String
+  userId      String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Float?
+  description String?
+  createdAt   DateTime  @default(now())
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([startTime])
+}
+
+model savedTask {
+  id     String @id @default(cuid())
+  userId String
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PomodoroSettings {
+  id                 String              @id @default(cuid())
+  userId             String
+  workDuration       Int                 @default(25)
+  shortBreakDuration Int                 @default(5)
+  longBreakDuration  Int                 @default(15)
+  longBreakInterval  Int                 @default(2)
+  rounds             Int                 @default(3)
+  soundEffect        PomodoroSoundEffect @default(BELL)
+  soundEffectVolume  Float               @default(0.5)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserSettings {
+  id                      String                @id @default(cuid())
+  userId                  String                @unique
+  taskCompletionSound     CompletionSoundEffect @default(TASK_COMPLETE)
+  questionCompletionSound CompletionSoundEffect @default(QUESTION_COMPLETE)
+  soundVolume             Float                 @default(0.6)
+  soundsEnabled           Boolean               @default(true)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model assignedToTask {
+  id     String @id @default(cuid())
+  userId String
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model assignedToMindMap {
+  id        String  @id @default(cuid())
+  userId    String
+  mindMapId String
+  mindMap   MindMap @relation(fields: [mindMapId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Tag {
+  id          String       @id @default(cuid())
+  name        String
+  color       CustomColors
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mindMaps    MindMap[]    @relation("MindMapToTag")
+  tasks       Task[]       @relation("TagToTask")
+}
+
+model TaskDate {
+  id       String  @id @default(cuid())
+  from     String?
+  to       String?
+  allDay   Boolean @default(false)
+  timeZone String? @default("UTC")
+  Task     Task[]
+}
+
+model CalendarEvent {
+  id             String             @id @default(cuid())
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  allDay         Boolean            @default(false)
+  timeZone       String             @default("UTC")
+  location       String?
+  type           EventType          @default(MEETING)
+  color          String             @default("#3B82F6")
+  isRecurring    Boolean            @default(false)
+  recurringRule  Json?
+  workspaceId    String?
+  creatorId      String
+  taskId         String?
+  externalId     String?
+  externalSource String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  attendees      CalendarAttendee[]
+  creator        User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  task           Task?              @relation(fields: [taskId], references: [id])
+  workspace      Workspace?         @relation(fields: [workspaceId], references: [id])
+
+  @@index([creatorId])
+  @@index([workspaceId])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([type])
+}
+
+model CalendarAttendee {
+  id      String         @id @default(cuid())
+  eventId String
+  userId  String?
+  email   String?
+  name    String?
+  status  AttendeeStatus @default(PENDING)
+  role    AttendeeRole   @default(ATTENDEE)
+  addedAt DateTime       @default(now())
+  event   CalendarEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([email])
+}
+
+model TimeBlock {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  userId      String
+  workspaceId String?
+  category    String?
+  color       String     @default("#8B5CF6")
+  createdAt   DateTime   @default(now())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  @@index([userId])
+  @@index([startTime])
+  @@index([endTime])
+}
+
+model CalendarTemplate {
+  id          String                  @id @default(cuid())
+  name        String
+  description String?
+  category    String                  @default("general")
+  isPublic    Boolean                 @default(false)
+  creatorId   String
+  createdAt   DateTime                @default(now())
+  creator     User                    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  events      CalendarTemplateEvent[]
+
+  @@index([creatorId])
+  @@index([category])
+  @@index([isPublic])
+}
+
+model CalendarTemplateEvent {
+  id          String           @id @default(cuid())
+  templateId  String
+  title       String
+  description String?
+  duration    Int
+  offsetDays  Int              @default(0)
+  offsetHours Int              @default(0)
+  type        EventType        @default(MEETING)
+  color       String           @default("#3B82F6")
+  template    CalendarTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+model Subscription {
+  userId      String
+  workspaceId String
+  userRole    UserPermission @default(READ_ONLY)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+}
+
+model MindMap {
+  id                String              @id @default(cuid())
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  creatorId         String
+  updatedUserId     String?
+  workspaceId       String
+  content           Json?
+  title             String
+  emoji             String              @default("1f9e0")
+  creator           User                @relation("MindMapCreatedByUser", fields: [creatorId], references: [id], onDelete: Cascade)
+  updatedBy         User?               @relation("MindMapUpdatedByUser", fields: [updatedUserId], references: [id], onDelete: Cascade)
+  workspace         Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assignedToMindMap assignedToMindMap[]
+  savedMindMaps     savedMindMaps[]
+  tags              Tag[]               @relation("MindMapToTag")
+
+  @@index([workspaceId])
+  @@index([updatedUserId])
+  @@index([creatorId])
+}
+
+model PomodoroSession {
+  id           String     @id @default(cuid())
+  userId       String
+  duration     Int
+  workspaceId  String?
+  completedAt  DateTime   @default(now())
+  pointsEarned Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id])
+
+  @@index([userId])
+  @@index([completedAt])
+}
+
+model PointTransaction {
+  id          String    @id @default(cuid())
+  userId      String
+  points      Int
+  type        PointType
+  description String
+  relatedId   String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model ChatMessage {
+  id          String    @id @default(cuid())
+  content     String
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspaceId String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model Note {
+  id            String             @id @default(cuid())
+  title         String?            @default("Untitled")
+  icon          String?
+  coverImage    String?
+  isPublic      Boolean            @default(false)
+  isArchived    Boolean            @default(false)
+  isFavorite    Boolean            @default(false)
+  workspaceId   String?
+  parentId      String?
+  position      Int                @default(0)
+  authorId      String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  isTemplate    Boolean            @default(false)
+  templateId    String?
+  content       String?
+  author        User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent        Note?              @relation("NoteHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Note[]             @relation("NoteHierarchy")
+  template      Note?              @relation("NoteTemplate", fields: [templateId], references: [id])
+  basedOn       Note[]             @relation("NoteTemplate")
+  workspace     Workspace?         @relation(fields: [workspaceId], references: [id])
+  blocks        NoteBlock[]
+  collaborators NoteCollaborator[]
+  history       NoteHistory[]
+  links         NoteLink[]         @relation("SourceNote")
+  linkedBy      NoteLink[]         @relation("TargetNote")
+  tags          NoteTag[]
+
+  @@index([authorId])
+  @@index([workspaceId])
+  @@index([parentId])
+  @@index([position])
+  @@index([createdAt])
+  @@index([isTemplate])
+}
+
+model NoteCollaborator {
+  id      String           @id @default(cuid())
+  noteId  String
+  userId  String
+  role    CollaboratorRole @default(EDITOR)
+  addedAt DateTime         @default(now())
+  note    Note             @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
+  @@index([noteId])
+  @@index([userId])
+}
+
+model NoteTag {
+  id     String @id @default(cuid())
+  name   String
+  color  String @default("#3B82F6")
+  noteId String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+  @@index([name])
+}
+
+model NoteLink {
+  id           String   @id @default(cuid())
+  sourceNoteId String
+  targetNoteId String
+  createdAt    DateTime @default(now())
+  sourceNote   Note     @relation("SourceNote", fields: [sourceNoteId], references: [id], onDelete: Cascade)
+  targetNote   Note     @relation("TargetNote", fields: [targetNoteId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceNoteId, targetNoteId])
+  @@index([sourceNoteId])
+  @@index([targetNoteId])
+}
+
+model NoteHistory {
+  id        String   @id @default(cuid())
+  noteId    String
+  title     String?
+  content   Json?
+  version   Int
+  changeBy  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [changeBy], references: [id], onDelete: Cascade)
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+  @@index([version])
+  @@index([createdAt])
+}
+
+model NoteBlock {
+  id          String      @id @default(cuid())
+  noteId      String
+  type        BlockType
+  content     Json?
+  position    Int         @default(0)
+  parentId    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdById String
+  createdBy   User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  note        Note        @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  parent      NoteBlock?  @relation("BlockHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    NoteBlock[] @relation("BlockHierarchy")
+
+  @@index([noteId])
+  @@index([position])
+  @@index([parentId])
+  @@index([type])
+}
+
+model UserSubmissionData {
+  id               String   @id @default(cuid())
+  userId           String
+  platform         String
+  submissionData   String
+  uploadedFileName String
+  uploadedAt       DateTime @default(now())
+  totalSubmissions Int      @default(0)
+  isActive         Boolean  @default(true)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@index([platform])
+  @@index([uploadedAt])
+}
+
+model DSAQuestion {
+  id               String        @id @default(cuid())
+  title            String
+  description      String?
+  topic            String
+  difficulty       Difficulty    @default(MEDIUM)
+  leetcodeUrl      String?
+  platform         String        @default("LeetCode")
+  tags             String[]      @default([])
+  hints            String[]      @default([])
+  companies        String[]      @default([])
+  frequency        Int           @default(1)
+  timeComplexity   String?
+  spaceComplexity  String?
+  approach         String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  importBatchId    String?
+  importedAt       DateTime?
+  importedBy       String?
+  isImported       Boolean       @default(false)
+  originalFileName String?
+  importBatchName  String?
+  progress         DSAProgress[]
+  importer         User?         @relation("ImportedDSAQuestions", fields: [importedBy], references: [id])
+
+  @@index([topic])
+  @@index([difficulty])
+  @@index([platform])
+  @@index([frequency])
+  @@index([isImported])
+  @@index([importedBy])
+  @@index([importBatchId])
+}
+
+model DSAProgress {
+  id          String      @id @default(cuid())
+  userId      String
+  questionId  String
+  status      DSAStatus   @default(TODO)
+  attempts    Int         @default(0)
+  timeSpent   Int         @default(0)
+  notes       String?
+  approach    String?
+  rating      Int?
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  question    DSAQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@index([questionId])
+  @@index([status])
+}
+
+model Achievement {
+  id               String              @id @default(cuid())
+  name             String              @unique
+  description      String
+  category         AchievementCategory
+  type             AchievementType
+  iconName         String
+  iconColor        String
+  requirement      Int
+  pointsReward     Int
+  badgeId          String?
+  isSecret         Boolean             @default(false)
+  rarity           AchievementRarity   @default(COMMON)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+  progress      Int         @default(0)
+  isCompleted   Boolean     @default(false)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model Challenge {
+  id               String              @id @default(cuid())
+  name             String              @unique
+  description      String
+  type             ChallengeType
+  category         ChallengeCategory
+  difficulty       ChallengeDifficulty
+  requirement      Int
+  timeLimit        Int?
+  pointsReward     Int
+  experienceReward Int
+  badgeReward      String?
+  isActive         Boolean             @default(true)
+  startDate        DateTime
+  endDate          DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  userChallenges   UserChallenge[]
+}
+
+model UserChallenge {
+  id          String    @id @default(cuid())
+  userId      String
+  challengeId String
+  progress    Int       @default(0)
+  isCompleted Boolean   @default(false)
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+}
+
+model UserStreak {
+  id             String     @id @default(cuid())
+  userId         String
+  streakType     StreakType
+  currentCount   Int        @default(0)
+  longestCount   Int        @default(0)
+  lastActiveDate DateTime?
+  multiplier     Float      @default(1.0)
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+}
+
+model PointPurchase {
+  id          String           @id @default(cuid())
+  userId      String
+  itemType    PurchaseItemType
+  itemId      String
+  pointsCost  Int
+  purchasedAt DateTime         @default(now())
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LeaderboardEntry {
+  id              String            @id @default(cuid())
+  userId          String
+  leaderboardType LeaderboardType
+  period          LeaderboardPeriod
+  score           Int
+  rank            Int
+  periodStart     DateTime
+  periodEnd       DateTime
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leaderboardType, period, periodStart])
+}
+
+model GameSettings {
+  id                    String   @id @default(cuid())
+  experiencePerLevel    Int      @default(1000)
+  experienceMultiplier  Float    @default(1.5)
+  maxLevel              Int      @default(100)
+  streakBonusThreshold  Int      @default(7)
+  streakBonusMultiplier Float    @default(1.5)
+  dailyPointsLimit      Int      @default(1000)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model EmailAnalytics {
+  id              String   @id
+  date            DateTime
+  emailsSent      Int      @default(0)
+  emailsDelivered Int      @default(0)
+  emailsOpened    Int      @default(0)
+  emailsClicked   Int      @default(0)
+  emailsReplied   Int      @default(0)
+  emailsBounced   Int      @default(0)
+  deliveryRate    Float?
+  openRate        Float?
+  clickRate       Float?
+  responseRate    Float?
+  bounceRate      Float?
+  userId          String
+  createdAt       DateTime @default(now())
+  User            User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+}
+
+model EmailCampaign {
+  id                    String              @id
+  name                  String
+  description           String?
+  templateId            String
+  subject               String
+  content               String
+  variables             Json?
+  scheduledAt           DateTime?
+  sentAt                DateTime?
+  completedAt           DateTime?
+  status                EmailCampaignStatus @default(DRAFT)
+  priority              EmailPriority       @default(NORMAL)
+  sendDelay             Int                 @default(0)
+  maxRecipientsPerHour  Int                 @default(50)
+  aiPersonalization     Boolean             @default(false)
+  aiSubjectOptimization Boolean             @default(false)
+  aiContentOptimization Boolean             @default(false)
+  totalRecipients       Int                 @default(0)
+  emailsSent            Int                 @default(0)
+  emailsDelivered       Int                 @default(0)
+  emailsOpened          Int                 @default(0)
+  emailsClicked         Int                 @default(0)
+  emailsReplied         Int                 @default(0)
+  emailsBounced         Int                 @default(0)
+  userId                String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime
+  EmailTemplate         EmailTemplate       @relation(fields: [templateId], references: [id])
+  User                  User                @relation(fields: [userId], references: [id])
+  EmailRecipient        EmailRecipient[]
+}
+
+model EmailRecipient {
+  id                     String               @id
+  email                  String
+  name                   String?
+  company                String?
+  position               String?
+  customFields           Json?
+  status                 EmailRecipientStatus @default(PENDING)
+  sentAt                 DateTime?
+  deliveredAt            DateTime?
+  openedAt               DateTime?
+  clickedAt              DateTime?
+  repliedAt              DateTime?
+  bouncedAt              DateTime?
+  unsubscribedAt         DateTime?
+  openCount              Int                  @default(0)
+  clickCount             Int                  @default(0)
+  lastOpened             DateTime?
+  lastClicked            DateTime?
+  personalizedSubject    String?
+  personalizedContent    String?
+  aiPersonalizationScore Float?
+  campaignId             String
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime
+  EmailCampaign          EmailCampaign        @relation(fields: [campaignId], references: [id])
+
+  @@unique([campaignId, email])
+}
+
+model EmailSettings {
+  id                  String   @id
+  smtpHost            String
+  smtpPort            Int
+  smtpUsername        String
+  smtpPassword        String
+  smtpSecure          Boolean  @default(true)
+  fromName            String
+  fromEmail           String
+  replyToEmail        String?
+  maxEmailsPerHour    Int      @default(50)
+  maxEmailsPerDay     Int      @default(500)
+  openaiApiKey        String?
+  aiEnabled           Boolean  @default(false)
+  aiModel             String   @default("gpt-4")
+  enableOpenTracking  Boolean  @default(true)
+  enableClickTracking Boolean  @default(true)
+  trackingDomain      String?
+  userId              String   @unique
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime
+  User                User     @relation(fields: [userId], references: [id])
+}
+
+model EmailTemplate {
+  id            String                @id
+  name          String
+  category      EmailTemplateCategory
+  subject       String
+  content       String
+  variables     String[]
+  description   String?
+  isActive      Boolean               @default(true)
+  isDefault     Boolean               @default(false)
+  openRate      Float?
+  responseRate  Float?
+  clickRate     Float?
+  aiGenerated   Boolean               @default(false)
+  aiPrompt      String?
+  createdById   String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime
+  EmailCampaign EmailCampaign[]
+  User          User?                 @relation(fields: [createdById], references: [id])
+}
+
+enum RecurringType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  CANCELLED
+}
+
+enum DependencyType {
+  FINISH_TO_START
+  START_TO_START
+  FINISH_TO_FINISH
+  START_TO_FINISH
+}
+
+enum EventType {
+  MEETING
+  DEADLINE
+  REMINDER
+  PERSONAL
+  WORK
+  BREAK
+  FOCUS_TIME
+  TRAVEL
+  APPOINTMENT
+}
+
+enum AttendeeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+enum AttendeeRole {
+  ORGANIZER
+  ATTENDEE
+  OPTIONAL
+}
+
+enum UserPermission {
+  ADMIN
+  CAN_EDIT
+  READ_ONLY
+  OWNER
+}
+
+enum UseCase {
+  WORK
+  STUDY
+}
+
+enum NotifyType {
+  NEW_USER_IN_WORKSPACE
+  USER_LEFT_WORKSPACE
+  NEW_TASK
+  NEW_MIND_MAP
+  NEW_ROLE
+  NEW_ASSIGNMENT_TASK
+  NEW_ASSIGNMENT_MIND_MAP
+}
+
+enum PomodoroSoundEffect {
+  ANALOG
+  BIRD
+  CHURCH_BELL
+  DIGITAL
+  FANCY
+  BELL
+}
+
+enum CompletionSoundEffect {
+  SUCCESS
+  ACHIEVEMENT
+  TASK_COMPLETE
+  QUESTION_COMPLETE
+  BELL
+  DIGITAL
+  BIRD
+  FANCY
+  ANALOG
+  CHURCH_BELL
+}
+
+enum CustomColors {
+  PURPLE
+  RED
+  GREEN
+  BLUE
+  PINK
+  YELLOW
+  ORANGE
+  CYAN
+  LIME
+  EMERALD
+  INDIGO
+  FUCHSIA
+}
+
+enum PointType {
+  POMODORO_COMPLETED
+  TASK_COMPLETED
+  MANUAL_ADJUSTMENT
+  DSA_QUESTION_COMPLETED
+  ACHIEVEMENT_UNLOCKED
+  CHALLENGE_COMPLETED
+  STREAK_BONUS
+  DAILY_LOGIN
+  COLLABORATION_BONUS
+  LEVEL_UP_BONUS
+  REFERRAL_BONUS
+  PURCHASE_SPENT
+  ADMIN_BONUS
+  EVENT_PARTICIPATION
+  MILESTONE_REACHED
+}
+
+enum CollaboratorRole {
+  VIEWER
+  EDITOR
+  ADMIN
+}
+
+enum BlockType {
+  TEXT
+  HEADING_1
+  HEADING_2
+  HEADING_3
+  BULLET_LIST
+  NUMBERED_LIST
+  TODO
+  QUOTE
+  CODE
+  TABLE
+  DIVIDER
+  IMAGE
+  VIDEO
+  FILE
+  TOGGLE
+  CALLOUT
+  EMBED
+  EQUATION
+  BOOKMARK
+  TEMPLATE_BUTTON
+}
+
+enum DSAStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  REVIEW
+  SKIPPED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AchievementCategory {
+  PRODUCTIVITY
+  COLLABORATION
+  CONSISTENCY
+  MASTERY
+  SOCIAL
+  SPECIAL
+}
+
+enum AchievementType {
+  MILESTONE
+  STREAK
+  CUMULATIVE
+  RARE_EVENT
+  SOCIAL
+}
+
+enum AchievementRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum ChallengeType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  SPECIAL_EVENT
+  PERSONAL
+}
+
+enum ChallengeCategory {
+  TASK_COMPLETION
+  POMODORO_FOCUS
+  DSA_PRACTICE
+  COLLABORATION
+  CONSISTENCY
+  SPEED
+}
+
+enum ChallengeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXTREME
+}
+
+enum StreakType {
+  DAILY_LOGIN
+  TASK_COMPLETION
+  POMODORO_SESSION
+  DSA_PRACTICE
+  CHAT_ACTIVITY
+  COLLABORATION
+}
+
+enum PurchaseItemType {
+  THEME
+  AVATAR
+  SOUND_PACK
+  BADGE
+  TITLE
+  FEATURE_UNLOCK
+  CUSTOMIZATION
+}
+
+enum LeaderboardType {
+  TOTAL_POINTS
+  WEEKLY_POINTS
+  TASK_COMPLETION
+  POMODORO_SESSIONS
+  DSA_SOLVED
+  STREAK_LENGTH
+  LEVEL_RANKING
+}
+
+enum LeaderboardPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ALL_TIME
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum EmailPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum EmailRecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  REPLIED
+  BOUNCED
+  FAILED
+  UNSUBSCRIBED
+}
+
+enum EmailTemplateCategory {
+  JOB_APPLICATION
+  FREELANCE_OUTREACH
+  NETWORKING
+  FOLLOW_UP
+  PROJECT_PROPOSAL
+  CLIENT_ONBOARDING
+  MEETING_REQUEST
+  THANK_YOU
+  COLLABORATION
+  PORTFOLIO_SHOWCASE
+  COLD_OUTREACH
+  INTRODUCTION
+  PARTNERSHIP
+  FEEDBACK_REQUEST
+  REFERRAL_REQUEST
+  OTHER
+}

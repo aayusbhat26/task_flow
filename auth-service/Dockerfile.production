@@ -1,0 +1,73 @@
+# Production Dockerfile for Auth Microservice
+FROM node:20-alpine AS builder
+
+# Install OpenSSL for Prisma
+
+RUN apk add --no-cache openssl openssl-dev
+
+
+# Set working directory
+WORKDIR /app
+
+
+# Copy package files (temporarily disable postinstall)
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Remove postinstall script to avoid errors during npm install
+RUN npm pkg delete scripts.postinstall
+
+# Install ALL dependencies (including dev dependencies for building)
+RUN npm ci && npm cache clean --force
+
+# Copy prisma schema and source code
+COPY prisma ./prisma
+COPY src ./src
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Build TypeScript
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl openssl-dev libc6-compat
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Remove postinstall script to avoid errors during npm install
+RUN npm pkg delete scripts.postinstall
+
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/prisma ./prisma
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+  adduser -S nodejs -u 1001
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port
+EXPOSE 3003
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start the application
+CMD ["node", "dist/index.js"]
