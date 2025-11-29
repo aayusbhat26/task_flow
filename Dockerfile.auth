@@ -30,7 +30,7 @@ RUN npm install --ignore-scripts
 # ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
 
 # Generate Prisma client using the global binary directly
-RUN prisma generate --schema=../prisma/schema.prisma
+RUN npx prisma generate --schema=../prisma/schema.prisma
 
 # Copy source code
 COPY auth-service/src ./src
