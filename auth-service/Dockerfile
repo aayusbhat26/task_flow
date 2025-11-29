@@ -41,4 +41,4 @@ RUN npm run build --workspace=auth-service
 
 EXPOSE 3003
 
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
