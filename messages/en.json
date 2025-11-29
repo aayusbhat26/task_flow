@@ -54,9 +54,9 @@
     }
   },
   "CHANGE_PROFILE_IMAGE": {
-  "TITLE": "Send a photo!",
-  "BUTTON": "Choose a photo",
-  "HOVER": "Change your profile image"
+    "TITLE": "Send a photo!",
+    "BUTTON": "Choose a photo",
+    "HOVER": "Change your profile image"
   },
   "ONBOARDING_FORM": {
     "FIRST_STEP": {
@@ -197,14 +197,14 @@
       "NEW_WORKSPACE_DIALOG_TITLE": "Create new workspace",
       "NEW_WORKSPACE_DIALOG_DESC": "some text"
     },
-      "SETTINGS": {
-    "GENERAL": "General",
-    "ACCOUNT": "Account",
-    "SECURITY": "Security",
-    "THEME": "Theme",
-    "SOUND": "Sound",
-    "WORKSPACE": "Workspace"
-  },
+    "SETTINGS": {
+      "GENERAL": "General",
+      "ACCOUNT": "Account",
+      "SECURITY": "Security",
+      "THEME": "Theme",
+      "SOUND": "Sound",
+      "WORKSPACE": "Workspace"
+    },
     "POMODORO": {
       "TIMER": "Timer",
       "SETTINGS": "Settings"
@@ -732,8 +732,8 @@
       "NEW_TASK_TEXT": "has added a new task in the workspace {name}",
       "NEW_MIND_MAP_TEXT": "has added a new mind map in the workspace {name}",
       "NEW_ROLE_TEXT": "You have been granted {role} level permissions in the workspace {name}",
-      "NEW_ASSIGMENT_TASK_TEXT": "You have been assigned a task in the workspace {name}",
-      "NEW_ASSIGMENT_MIND_MAP_TEXT": "You have been assigned to a mind map in the workspace {name}"
+      "NEW_ASSIGNMENT_TASK_TEXT": "You have been assigned a task in the workspace {name}",
+      "NEW_ASSIGNMENT_MIND_MAP_TEXT": "You have been assigned to a mind map in the workspace {name}"
     }
   },
   "HOME_PAGE": {

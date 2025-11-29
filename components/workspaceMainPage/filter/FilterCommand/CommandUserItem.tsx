@@ -34,7 +34,13 @@ export const CommandUserItem = ({
         className="w-full h-fit justify-between px-2 py-1.5 text-xs"
       >
         <div className="flex items-center gap-2">
-          <UserAvatar className="w-8 h-8" size={10} profileImage={image} />
+          <UserAvatar
+            className="w-8 h-8"
+            size={10}
+            profileImage={image}
+            userId={id}
+            fallbackText={username?.charAt(0).toUpperCase()}
+          />
           <p className="text-secondary-foreground">
             {sessionUserId === id ? t("ASSIGNED_TO_ME") : text}
           </p>

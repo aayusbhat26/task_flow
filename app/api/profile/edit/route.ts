@@ -21,12 +21,15 @@ export async function POST(request: Request) {
     return NextResponse.json("ERRORS.WRONG_DATA", { status: 401 });
   }
 
-  const { username, name, surname } = result.data;
+  const { username, name, surname, showDSA } = result.data;
 
   try {
     const user = await db.user.findUnique({
       where: {
         id: session.user.id,
+      },
+      include: {
+        userSettings: true,
       },
     });
 
@@ -56,6 +59,21 @@ export async function POST(request: Request) {
         username,
       },
     });
+
+    if (showDSA !== undefined) {
+      await db.userSettings.upsert({
+        where: {
+          userId: user.id,
+        },
+        update: {
+          showDSA,
+        },
+        create: {
+          userId: user.id,
+          showDSA,
+        },
+      });
+    }
 
     return NextResponse.json(result.data, { status: 200 });
   } catch (_) {

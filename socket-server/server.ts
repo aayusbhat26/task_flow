@@ -43,6 +43,11 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // If already in this workspace, do nothing
+    if (user.workspaceId === data.workspaceId) {
+      return;
+    }
+
     if (user.workspaceId) {
       socket.leave(`workspace:${user.workspaceId}`);
     }
@@ -73,40 +78,68 @@ io.on("connection", (socket) => {
   });
 
   // Broadcast new message (without DB)
-  socket.on("message-created", (data: { workspaceId: string; message: any }) => {
-    const user = activeUsers.get(socket.id);
-    if (!user) return;
+  socket.on(
+    "message-created",
+    (data: { workspaceId: string; message: any }) => {
+      const user = activeUsers.get(socket.id);
+      if (!user) return;
 
-    io.to(`workspace:${data.workspaceId}`).emit("new-message", data.message);
-  });
+      io.to(`workspace:${data.workspaceId}`).emit("new-message", data.message);
+    }
+  );
 
   // Save & broadcast message (with DB)
-  socket.on("send-message", async (data: { workspaceId: string; content: string }) => {
-    const user = activeUsers.get(socket.id);
-    if (!user) {
-      socket.emit("error", { message: "User not authenticated" });
-      return;
-    }
+  socket.on(
+    "send-message",
+    async (data: { workspaceId: string; content: string }) => {
+      const user = activeUsers.get(socket.id);
+      if (!user) {
+        socket.emit("error", { message: "User not authenticated" });
+        return;
+      }
 
-    try {
-      const message = await prisma.chatMessage.create({
-        data: {
-          content: data.content,
-          authorId: user.userId,
-          workspaceId: data.workspaceId,
-        },
-        include: {
-          author: {
-            select: { id: true, name: true, username: true, image: true },
+      try {
+        const message = await prisma.chatMessage.create({
+          data: {
+            content: data.content,
+            authorId: user.userId,
+            workspaceId: data.workspaceId,
           },
-        },
-      });
+          include: {
+            author: {
+              select: { id: true, name: true, username: true, image: true },
+            },
+          },
+        });
 
-      io.to(`workspace:${data.workspaceId}`).emit("new-message", message);
-    } catch (error) {
-      console.error("❌ Send message error:", error);
-      socket.emit("error", { message: "Failed to send message" });
+        io.to(`workspace:${data.workspaceId}`).emit("new-message", message);
+      } catch (error) {
+        console.error("❌ Send message error:", error);
+        socket.emit("error", { message: "Failed to send message" });
+      }
     }
+  );
+
+  // Note events
+  socket.on("note-created", (data: { workspaceId: string; note: any }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    // Broadcast to others in the workspace/group
+    socket.to(`workspace:${data.workspaceId}`).emit("note-created", data.note);
+  });
+
+  socket.on("note-updated", (data: { workspaceId: string; note: any }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    socket.to(`workspace:${data.workspaceId}`).emit("note-updated", data.note);
+  });
+
+  socket.on("note-deleted", (data: { workspaceId: string; noteId: string }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    socket
+      .to(`workspace:${data.workspaceId}`)
+      .emit("note-deleted", data.noteId);
   });
 
   // Disconnect

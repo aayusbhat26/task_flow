@@ -9,13 +9,11 @@
     "start": "node dist/index.js",
     "start:prod": "NODE_ENV=production node dist/index.js",
     "postinstall": "npx prisma generate --schema=../prisma/schema.prisma",
-    "prisma:generate": "npx prisma generate",
-    "prisma:migrate": "npx prisma migrate deploy",
+    "prisma:generate": "npx prisma generate --schema=../prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate deploy --schema=../prisma/schema.prisma",
     "docker:build": "docker build -t auth-service:latest .",
     "docker:build:prod": "docker build -t auth-service:latest -f Dockerfile.production .",
-    "docker:run": "docker run -p 3003:3003 --env-file .env auth-service:latest",
-    "deploy:aws": "bash deploy-to-aws.sh",
-    "deploy:aws:win": "deploy-to-aws.bat"
+    "docker:run": "docker run -p 3003:3003 --env-file .env auth-service:latest"
   },
   "keywords": [
     "auth",
@@ -35,6 +33,7 @@
     "express-session": "^1.18.0",
     "jsonwebtoken": "^9.0.2",
     "next-auth": "^4.24.7",
+    "taskflow": "file:..",
     "unique-username-generator": "^1.3.0",
     "uuid": "^9.0.1",
     "zod": "^3.23.8"

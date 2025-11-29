@@ -6,23 +6,20 @@ RUN apk add --no-cache openssl openssl-dev libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY auth-service/package*.json ./
 
-# Copy prisma schema from auth-service directory
-COPY prisma ./prisma
-
-# Remove postinstall script to avoid errors
-RUN npm pkg delete scripts.postinstall
+# Copy prisma schema from root
+COPY prisma ../prisma
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY src ./src
+COPY auth-service/src ./src
+COPY auth-service/tsconfig.json ./
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN npx prisma generate --schema=../prisma/schema.prisma
 
 # Build TypeScript
 RUN npm run build

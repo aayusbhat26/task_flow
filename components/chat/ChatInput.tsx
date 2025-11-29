@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   Send,
   Smile,
   Paperclip,
@@ -20,12 +20,28 @@ interface CurrentUser {
   username: string;
 }
 
-interface ChatInputProps {
-  workspaceId: string;
-  currentUser: CurrentUser;
+interface Message {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    username: string;
+    image?: string | null;
+  };
+  isOptimistic?: boolean;
 }
 
-export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
+interface ChatInputProps {
+  workspaceId: string;
+  groupId?: string;
+  currentUser: CurrentUser;
+  onOptimisticMessage?: (message: Message) => void;
+  onMessageConfirmed?: (tempId: string, realMessage: Message) => void;
+}
+
+export function ChatInput({ workspaceId, groupId, currentUser, onOptimisticMessage, onMessageConfirmed }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,11 +58,34 @@ export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
 
   const sendMessage = async () => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage || isSending || !workspaceId) return;
+    if (!trimmedMessage || (!workspaceId && !groupId)) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: tempId,
+      content: trimmedMessage,
+      createdAt: new Date().toISOString(),
+      author: {
+        id: currentUser.id,
+        name: currentUser.name,
+        username: currentUser.username,
+        image: currentUser.image,
+      },
+      isOptimistic: true,
+    };
+
+    // Optimistic update
+    onOptimisticMessage?.(optimisticMessage);
+    setMessage(''); // Clear input immediately
+
+    // Reset height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
 
     try {
       setIsSending(true);
-      
+
       const response = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: {
@@ -54,22 +93,24 @@ export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
         },
         body: JSON.stringify({
           content: trimmedMessage,
-          workspaceId,
+          workspaceId: groupId ? undefined : workspaceId,
+          groupId,
         }),
       });
 
       if (response.ok) {
         const newMessage = await response.json();
-        
+
+        // Confirm message
+        onMessageConfirmed?.(tempId, newMessage);
+
         // Emit to socket for real-time updates (broadcast the created message)
         if (socket) {
           socket.emit('message-created', {
-            workspaceId,
+            workspaceId: groupId || workspaceId, // Use groupId as room ID if present
             message: newMessage,
           });
         }
-        
-        setMessage('');
       } else {
         console.error('Failed to send message');
       }
@@ -87,7 +128,7 @@ export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
     }
   };
 
-  const canSend = message.trim().length > 0 && !isSending;
+  const canSend = message.trim().length > 0;
 
   return (
     <div className="border-t border-gray-200 bg-white flex-shrink-0">
@@ -95,8 +136,8 @@ export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
         <div className="flex items-end space-x-3">
           {/* Additional actions - hidden on mobile */}
           <div className="hidden sm:flex space-x-1">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               className="text-gray-400 hover:text-gray-600 h-9 w-9 p-0 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -116,20 +157,19 @@ export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
                 "min-h-[40px] max-h-[120px] resize-none border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg bg-white text-gray-900 placeholder-gray-500",
                 "pr-20 py-2 pl-3 text-sm" // Space for buttons
               )}
-              disabled={isSending}
             />
-            
+
             {/* Input actions */}
             <div className="absolute right-2 bottom-2 flex items-center space-x-1">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 className="text-gray-400 hover:text-gray-600 p-1 h-7 w-7 rounded-md hover:bg-gray-100 transition-colors"
               >
                 <Paperclip className="w-3 h-3" />
               </Button>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 className="text-gray-400 hover:text-gray-600 p-1 h-7 w-7 rounded-md hover:bg-gray-100 transition-colors"
               >
@@ -145,16 +185,12 @@ export function ChatInput({ workspaceId, currentUser }: ChatInputProps) {
             size="sm"
             className={cn(
               "px-3 py-2 h-9 rounded-lg font-medium transition-colors",
-              canSend 
-                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+              canSend
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             )}
           >
-            {isSending ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+            <Send className="w-4 h-4" />
           </Button>
         </div>
 

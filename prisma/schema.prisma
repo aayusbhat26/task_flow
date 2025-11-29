@@ -74,6 +74,22 @@ model User {
   assignedToTask           assignedToTask[]
   savedMindMaps            savedMindMaps[]
   savedTask                savedTask[]
+  groups                   Group[]              @relation("GroupMembers")
+}
+
+model Group {
+  id          String        @id @default(cuid())
+  name        String
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     User[]        @relation("GroupMembers")
+  notes       Note[]
+  messages    ChatMessage[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([workspaceId])
 }
 
 model savedMindMaps {
@@ -170,6 +186,7 @@ model Workspace {
   tags             Tag[]
   tasks            Task[]
   timeBlocks       TimeBlock[]
+  groups           Group[]
   Creator          User?             @relation("CreatedBy", fields: [creatorId], references: [id], onDelete: Cascade)
 }
 
@@ -289,6 +306,7 @@ model UserSettings {
   questionCompletionSound CompletionSoundEffect @default(QUESTION_COMPLETE)
   soundVolume             Float                 @default(0.6)
   soundsEnabled           Boolean               @default(true)
+  showDSA                 Boolean               @default(false)
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -496,10 +514,13 @@ model ChatMessage {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   workspaceId String
+  groupId     String?
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  group       Group?    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
+  @@index([groupId])
   @@index([authorId])
   @@index([createdAt])
 }
@@ -513,6 +534,7 @@ model Note {
   isArchived    Boolean            @default(false)
   isFavorite    Boolean            @default(false)
   workspaceId   String?
+  groupId       String?
   parentId      String?
   position      Int                @default(0)
   authorId      String
@@ -527,6 +549,7 @@ model Note {
   template      Note?              @relation("NoteTemplate", fields: [templateId], references: [id])
   basedOn       Note[]             @relation("NoteTemplate")
   workspace     Workspace?         @relation(fields: [workspaceId], references: [id])
+  group         Group?             @relation(fields: [groupId], references: [id], onDelete: Cascade)
   blocks        NoteBlock[]
   collaborators NoteCollaborator[]
   history       NoteHistory[]
@@ -536,6 +559,7 @@ model Note {
 
   @@index([authorId])
   @@index([workspaceId])
+  @@index([groupId])
   @@index([parentId])
   @@index([position])
   @@index([createdAt])
@@ -1000,6 +1024,7 @@ enum UserPermission {
 enum UseCase {
   WORK
   STUDY
+  OFFICE
 }
 
 enum NotifyType {

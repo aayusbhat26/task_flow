@@ -13,7 +13,11 @@ import Link from "next/link";
 const Settings = async () => {
   const session = await checkIfUserCompletedOnboarding("/dashboard/settings");
 
-
+  const userSettings = await db.userSettings.findUnique({
+    where: {
+      userId: session.user.id,
+    },
+  });
 
   return (
     <>
@@ -22,18 +26,18 @@ const Settings = async () => {
       </DashboardHeader>
       <main>
         <Heading />
-        <AccountInfo session={session} />
-        
-        <div className="p-4 sm:p-6">
-          <Separator />
-        </div>
-        
+        <AccountInfo session={session} showDSA={userSettings?.showDSA ?? true} />
 
-        
         <div className="p-4 sm:p-6">
           <Separator />
         </div>
-        
+
+
+
+        <div className="p-4 sm:p-6">
+          <Separator />
+        </div>
+
         <DeleteAccount userEmail={session.user.email!} />
       </main>
     </>

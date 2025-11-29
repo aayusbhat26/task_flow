@@ -1,6 +1,6 @@
-import { getAuthSession } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { NextRequest, NextResponse } from 'next/server';
+import { getAuthSession } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   request: NextRequest,
@@ -10,13 +10,17 @@ export async function GET(
     const session = await getAuthSession();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const note = await db.note.findFirst({
       where: {
         id: params.noteId,
-        authorId: session.user.id,
+        OR: [
+          { authorId: session.user.id },
+          { group: { members: { some: { id: session.user.id } } } },
+          { isPublic: true },
+        ],
       },
       include: {
         author: {
@@ -25,19 +29,19 @@ export async function GET(
             name: true,
             username: true,
             image: true,
-          }
+          },
         },
         workspace: {
           select: {
             id: true,
             name: true,
             color: true,
-          }
+          },
         },
         blocks: {
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         children: {
           select: {
@@ -47,27 +51,27 @@ export async function GET(
             position: true,
           },
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         _count: {
           select: {
             blocks: true,
             children: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     if (!note) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
     return NextResponse.json(note);
   } catch (error) {
-    console.error('Error fetching note:', error);
+    console.error("Error fetching note:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -81,21 +85,33 @@ export async function PATCH(
     const session = await getAuthSession();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    const { title, icon, coverImage, isPublic, isFavorite, isArchived, blocks, content } = body;
+    const {
+      title,
+      icon,
+      coverImage,
+      isPublic,
+      isFavorite,
+      isArchived,
+      blocks,
+      content,
+    } = body;
 
     const note = await db.note.findFirst({
       where: {
         id: params.noteId,
-        authorId: session.user.id,
-      }
+        OR: [
+          { authorId: session.user.id },
+          { group: { members: { some: { id: session.user.id } } } },
+        ],
+      },
     });
 
     if (!note) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
     const updatedNote = await db.$transaction(async (tx) => {
@@ -112,7 +128,7 @@ export async function PATCH(
           ...(isFavorite !== undefined && { isFavorite }),
           ...(isArchived !== undefined && { isArchived }),
           ...(content !== undefined && { content }),
-        }
+        },
       });
 
       // Update blocks if provided
@@ -120,8 +136,8 @@ export async function PATCH(
         // Delete existing blocks
         await tx.noteBlock.deleteMany({
           where: {
-            noteId: params.noteId
-          }
+            noteId: params.noteId,
+          },
         });
 
         // Create new blocks
@@ -130,14 +146,14 @@ export async function PATCH(
 
           // Handle both old and new data formats
           let blockContent;
-          if (typeof block.content === 'object' && block.content !== null) {
+          if (typeof block.content === "object" && block.content !== null) {
             // New format: content is already an object with text and properties
             blockContent = block.content;
           } else {
             // Old format: content is a string, properties are separate
             blockContent = {
-              text: block.content || '',
-              ...block.properties
+              text: block.content || "",
+              ...block.properties,
             };
           }
 
@@ -149,7 +165,7 @@ export async function PATCH(
               content: blockContent,
               position: block.position,
               createdById: session.user.id,
-            }
+            },
           });
         }
 
@@ -159,11 +175,12 @@ export async function PATCH(
             noteId: params.noteId,
             content: JSON.stringify(blocks),
             title: title || note.title,
-            version: (await tx.noteHistory.count({
-              where: { noteId: params.noteId }
-            })) + 1,
-            changeBy: session.user.id
-          }
+            version:
+              (await tx.noteHistory.count({
+                where: { noteId: params.noteId },
+              })) + 1,
+            changeBy: session.user.id,
+          },
         });
       } else if (content !== undefined) {
         // New markdown format - create history entry
@@ -172,11 +189,12 @@ export async function PATCH(
             noteId: params.noteId,
             content: content,
             title: title || note.title,
-            version: (await tx.noteHistory.count({
-              where: { noteId: params.noteId }
-            })) + 1,
-            changeBy: session.user.id
-          }
+            version:
+              (await tx.noteHistory.count({
+                where: { noteId: params.noteId },
+              })) + 1,
+            changeBy: session.user.id,
+          },
         });
       }
 
@@ -193,19 +211,19 @@ export async function PATCH(
             name: true,
             username: true,
             image: true,
-          }
+          },
         },
         workspace: {
           select: {
             id: true,
             name: true,
             color: true,
-          }
+          },
         },
         blocks: {
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         children: {
           select: {
@@ -215,23 +233,23 @@ export async function PATCH(
             position: true,
           },
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         _count: {
           select: {
             blocks: true,
             children: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     return NextResponse.json(fullNote);
   } catch (error) {
-    console.error('Error updating note:', error);
+    console.error("Error updating note:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -245,45 +263,45 @@ export async function DELETE(
     const session = await getAuthSession();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const note = await db.note.findFirst({
       where: {
         id: params.noteId,
         authorId: session.user.id,
-      }
+      },
     });
 
     if (!note) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+      return NextResponse.json({ error: "Note not found" }, { status: 404 });
     }
 
     // Check if the request wants hard delete (query parameter)
     const { searchParams } = new URL(request.url);
-    const hardDelete = searchParams.get('hard') === 'true';
+    const hardDelete = searchParams.get("hard") === "true";
 
     if (hardDelete) {
       // Hard delete - permanently remove the note
       await db.$transaction(async (tx) => {
         // Delete all blocks first
         await tx.noteBlock.deleteMany({
-          where: { noteId: params.noteId }
+          where: { noteId: params.noteId },
         });
-        
+
         // Delete note history
         await tx.noteHistory.deleteMany({
-          where: { noteId: params.noteId }
+          where: { noteId: params.noteId },
         });
-        
+
         // Delete collaborators
         await tx.noteCollaborator.deleteMany({
-          where: { noteId: params.noteId }
+          where: { noteId: params.noteId },
         });
-        
+
         // Finally delete the note
         await tx.note.delete({
-          where: { id: params.noteId }
+          where: { id: params.noteId },
         });
       });
     } else {
@@ -294,15 +312,15 @@ export async function DELETE(
         },
         data: {
           isArchived: true,
-        }
+        },
       });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting note:', error);
+    console.error("Error deleting note:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

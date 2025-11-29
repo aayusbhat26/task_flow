@@ -3,6 +3,7 @@
 import React from 'react';
 import { AutosaveIndicatorProvider } from '@/context/AutosaveIndicator';
 import { useToast } from '@/hooks/use-toast';
+import { useSocket } from '@/context/SocketProvider';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { MarkdownNotesEditor } from './MarkdownNotesEditor';
 import { EnhancedNotesSidebar } from './EnhancedNotesSidebar';
@@ -97,9 +98,10 @@ interface NotesAppProps {
   notes: Note[];
   workspaces: Workspace[];
   currentUser: CurrentUser;
+  groupId?: string;
 }
 
-export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
+export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [allNotes, setAllNotes] = useState<Note[]>(notes);
@@ -107,6 +109,84 @@ export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const loadingTimeoutRef = useRef<NodeJS.Timeout>();
+  const { socket, joinWorkspace, leaveWorkspace, sendNoteCreated, sendNoteUpdated, sendNoteDeleted } = useSocket();
+
+  // Join workspace for real-time updates
+  useEffect(() => {
+    if (groupId) {
+      joinWorkspace(groupId);
+      return () => {
+        leaveWorkspace(groupId);
+      };
+    }
+  }, [groupId, joinWorkspace, leaveWorkspace]);
+
+  // Listen for real-time note events
+  useEffect(() => {
+    if (!socket || !groupId) return;
+
+    const onNoteCreated = (newNote: Note) => {
+      // Avoid duplicate notes if we created it (though optimistic update handles this usually,
+      // but socket event might come back to sender depending on server implementation.
+      // Our server uses socket.to() which excludes sender, so this is fine.)
+      setAllNotes(prev => {
+        if (prev.some(n => n.id === newNote.id)) return prev;
+        return [newNote, ...prev];
+      });
+      noteContentCache.set(newNote.id, newNote);
+      toast({
+        title: 'New note',
+        description: `"${newNote.title}" was created by ${newNote.author.name}.`,
+      });
+    };
+
+    const onNoteUpdated = (updatedNote: Note) => {
+      setAllNotes(prev => prev.map(note => note.id === updatedNote.id ? updatedNote : note));
+
+      // Update selected note if it's the one being updated
+      setSelectedNote(prev => {
+        if (prev?.id === updatedNote.id) {
+          // Preserve local state if needed, but for now just update content
+          return updatedNote;
+        }
+        return prev;
+      });
+
+      noteContentCache.set(updatedNote.id, updatedNote);
+    };
+
+    const onNoteDeleted = (noteId: string) => {
+      setAllNotes(prev => prev.filter(note => note.id !== noteId));
+
+      setSelectedNote(prev => {
+        if (prev?.id === noteId) {
+          return null;
+        }
+        return prev;
+      });
+
+      noteContentCache.delete(noteId);
+      toast({
+        title: 'Note deleted',
+        description: 'A note was deleted by another user.',
+      });
+    };
+
+    socket.on('note-created', onNoteCreated);
+    socket.on('note-updated', onNoteUpdated);
+    socket.on('note-deleted', onNoteDeleted);
+
+    return () => {
+      socket.off('note-created', onNoteCreated);
+      socket.off('note-updated', onNoteUpdated);
+      socket.off('note-deleted', onNoteDeleted);
+    };
+  }, [socket, groupId, toast]);
+
+  // Update notes when prop changes
+  useEffect(() => {
+    setAllNotes(notes);
+  }, [notes]);
 
   // Stable handleNoteSelect function
   const selectingRef = useRef(false);
@@ -252,6 +332,7 @@ export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
       isArchived: false,
       isFavorite: false,
       workspaceId: noteData.workspaceId || null,
+      groupId: groupId || null,
       position: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -287,6 +368,7 @@ export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
           icon: noteData.icon || '📝',
           isPublic: false,
           isFavorite: false,
+          groupId: groupId,
           content: '# Welcome to your new note!\n\nStart writing your thoughts in **Markdown**...',
           ...noteData
         }),
@@ -304,6 +386,10 @@ export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
       ));
       setSelectedNote(newNote);
       noteContentCache.set(newNote.id, newNote);
+
+      if (groupId) {
+        sendNoteCreated(groupId, newNote);
+      }
 
       toast({
         title: 'Note created',
@@ -446,6 +532,10 @@ export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
 
       setSelectedNote(prev => prev?.id === noteId ? updatedNote : prev);
       noteContentCache.set(noteId, updatedNote);
+
+      if (groupId) {
+        sendNoteUpdated(groupId, updatedNote);
+      }
     } catch (error) {
       // Revert optimistic update on failure
       if (originalNote) {
@@ -493,6 +583,10 @@ export function NotesApp({ notes, workspaces, currentUser }: NotesAppProps) {
       });
 
       noteContentCache.delete(noteId);
+
+      if (groupId) {
+        sendNoteDeleted(groupId, noteId);
+      }
 
       toast({
         title: 'Note deleted',

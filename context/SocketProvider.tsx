@@ -10,6 +10,9 @@ interface SocketContextType {
   joinWorkspace: (workspaceId: string) => void;
   leaveWorkspace: (workspaceId: string) => void;
   sendMessage: (workspaceId: string, content: string) => void;
+  sendNoteCreated: (workspaceId: string, note: any) => void;
+  sendNoteUpdated: (workspaceId: string, note: any) => void;
+  sendNoteDeleted: (workspaceId: string, noteId: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -18,6 +21,9 @@ const SocketContext = createContext<SocketContextType>({
   joinWorkspace: () => {},
   leaveWorkspace: () => {},
   sendMessage: () => {},
+  sendNoteCreated: () => {},
+  sendNoteUpdated: () => {},
+  sendNoteDeleted: () => {},
 });
 
 export const useSocket = () => useContext(SocketContext);
@@ -59,7 +65,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
     // Create real socket.io connection
     console.log('🔗 Socket: Connecting to chat server...');
 
-    const socketInstance = io('http://localhost:8080', {
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080';
+    const socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
       timeout: 5000, // 5 second timeout
@@ -125,13 +132,37 @@ export function SocketProvider({ children }: SocketProviderProps) {
     }
   }, [socket, isConnected]);
 
+  const sendNoteCreated = useCallback((workspaceId: string, note: any) => {
+    if (socket && isConnected) {
+      console.log('🔗 Socket: Sending note created:', note.id);
+      socket.emit('note-created', { workspaceId, note });
+    }
+  }, [socket, isConnected]);
+
+  const sendNoteUpdated = useCallback((workspaceId: string, note: any) => {
+    if (socket && isConnected) {
+      console.log('🔗 Socket: Sending note updated:', note.id);
+      socket.emit('note-updated', { workspaceId, note });
+    }
+  }, [socket, isConnected]);
+
+  const sendNoteDeleted = useCallback((workspaceId: string, noteId: string) => {
+    if (socket && isConnected) {
+      console.log('🔗 Socket: Sending note deleted:', noteId);
+      socket.emit('note-deleted', { workspaceId, noteId });
+    }
+  }, [socket, isConnected]);
+
   const contextValue = useMemo(() => ({
     socket,
     isConnected,
     joinWorkspace,
     leaveWorkspace,
     sendMessage,
-  }), [socket, isConnected, joinWorkspace, leaveWorkspace, sendMessage]);
+    sendNoteCreated,
+    sendNoteUpdated,
+    sendNoteDeleted,
+  }), [socket, isConnected, joinWorkspace, leaveWorkspace, sendMessage, sendNoteCreated, sendNoteUpdated, sendNoteDeleted]);
 
   return (
     <SocketContext.Provider value={contextValue}>

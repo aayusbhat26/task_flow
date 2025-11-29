@@ -7,13 +7,15 @@
     "start": "node dist/server.js",
     "dev": "tsx watch server.ts",
     "build": "tsc server.ts --outDir dist",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:generate": "prisma generate --schema=../prisma/schema.prisma",
+    "postinstall": "prisma generate --schema=../prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=../prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "dotenv": "^17.2.1",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "taskflow": "file:.."
   },
   "devDependencies": {
     "@types/node": "^20.10.5",

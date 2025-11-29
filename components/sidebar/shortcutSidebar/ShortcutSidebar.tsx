@@ -9,17 +9,19 @@ interface Props {
   userWorkspaces: Workspace[];
   createdWorkspaces: number;
   refetchWorkspaces?: () => void;
+  showDSA: boolean;
 }
 
 export const ShortcutSidebar = ({
   userWorkspaces,
   createdWorkspaces,
   refetchWorkspaces,
+  showDSA,
 }: Props) => {
   return (
     <div className="border-r h-full flex flex-col justify-between items-center p-4 sm:py-6 w-16 sm:w-20">
       <div className="w-full space-y-3 p-1">
-        <Top />
+        <Top showDSA={showDSA} />
         <Workspaces
           userWorkspaces={userWorkspaces}
           href="/dashboard/workspace"

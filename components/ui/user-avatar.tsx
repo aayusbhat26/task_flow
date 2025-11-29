@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, getRandomColor } from "@/lib/utils";
 import { User } from "lucide-react";
 import Image from "next/image";
 
@@ -7,13 +7,15 @@ interface Props {
   className?: string;
   profileImage?: string | null;
   fallbackText?: string;
+  userId?: string;
 }
 
-export const UserAvatar = ({ 
-  className, 
-  profileImage, 
-  size = 16, 
-  fallbackText 
+export const UserAvatar = ({
+  className,
+  profileImage,
+  size = 16,
+  fallbackText,
+  userId
 }: Props) => {
   return (
     <div
@@ -25,7 +27,10 @@ export const UserAvatar = ({
       {profileImage ? (
         <Image src={profileImage} fill alt="Profile Avatar" priority />
       ) : fallbackText ? (
-        <span className="text-sm font-medium text-primary-foreground bg-primary w-full h-full flex items-center justify-center rounded-full">
+        <span className={cn(
+          "text-sm font-medium text-white w-full h-full flex items-center justify-center rounded-full",
+          userId ? getRandomColor(userId) : "bg-primary"
+        )}>
           {fallbackText}
         </span>
       ) : (

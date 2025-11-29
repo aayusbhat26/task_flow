@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { 
-  MessageSquare, 
-  Users, 
-  Settings, 
+import {
+  MessageSquare,
+  Users,
+  Settings,
   ChevronLeft,
   ChevronRight,
   Hash
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getRandomColor } from '@/lib/utils';
 import { ChatArea } from './ChatArea';
 
 interface Workspace {
@@ -69,7 +69,7 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
     <div className="flex h-full w-full overflow-hidden">
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
@@ -180,7 +180,7 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
             <div className="relative flex-shrink-0">
               <Avatar className="w-8 h-8">
                 <AvatarImage src={currentUser.image || ''} alt={currentUser.name} />
-                <AvatarFallback className="bg-blue-500 text-white font-semibold">
+                <AvatarFallback className={cn("text-white font-semibold", getRandomColor(currentUser.id))}>
                   {currentUser.name?.charAt(0) || currentUser.username?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -204,8 +204,8 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedWorkspace ? (
-          <ChatArea 
-            workspace={selectedWorkspace} 
+          <ChatArea
+            workspace={selectedWorkspace}
             currentUser={currentUser}
             onOpenMobileMenu={() => setMobileMenuOpen(true)}
           />
@@ -222,7 +222,7 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
                 Select a workspace from the sidebar to start chatting with your team members.
               </p>
               {/* Mobile workspace selector button */}
-              <Button 
+              <Button
                 onClick={() => setMobileMenuOpen(true)}
                 className="mt-4 lg:hidden"
                 variant="outline"

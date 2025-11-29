@@ -37,6 +37,8 @@ export const UserHoverInfo = ({ user, className }: Props) => {
             profileImage={user?.image}
             className="w-10 h-10"
             size={12}
+            userId={user?.id}
+            fallbackText={user?.username?.charAt(0).toUpperCase()}
           />
 
           <div className="flex flex-col">

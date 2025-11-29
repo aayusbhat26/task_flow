@@ -107,8 +107,8 @@ export const NotificationItem = ({
         </div>
         <div className="flex gap-4">
           <div className="w-full text-sm flex flex-col gap-1">
-            <p>
-              <span className="font-bold">{name}</span>
+            <p className="break-words whitespace-normal">
+              <span className="font-bold">{name} </span>
               {textContent}
             </p>
             <p

@@ -1,5 +1,15 @@
 import { clsx, type ClassValue } from "clsx";
-import { CalendarDays, Clock, Home, Star, User, MessageSquare, FileText, Code, Target, Trophy } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  Home,
+  Star,
+  User,
+  FileText,
+  Code,
+  Target,
+  Trophy,
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import dayjs from "dayjs";
 import { array } from "zod";
@@ -50,12 +60,6 @@ export const topSidebarLinks = [
     prefetch: true,
   },
   {
-    href: "/dashboard/chat",
-    Icon: MessageSquare,
-    hoverTextKey: "CHAT_HOVER",
-    prefetch: true,
-  },
-  {
     href: "/dsa",
     Icon: Target,
     hoverTextKey: "DSA_HOVER",
@@ -88,7 +92,7 @@ export const getMonth = (month = dayjs().month()) => {
       const date = dayjs(new Date(year, month, currentMonthCount));
       return {
         date,
-        mapIndex: { weekIdx, dayIdx }
+        mapIndex: { weekIdx, dayIdx },
       };
     });
   });
@@ -106,7 +110,7 @@ export const getMonth = (month = dayjs().month()) => {
       // Always return an object with date and mapIndex
       firstWeek.unshift({
         date: dayjs(new Date(previousYear, previousMonth, day)),
-        mapIndex: { weekIdx: 0, dayIdx: i - 1 }
+        mapIndex: { weekIdx: 0, dayIdx: i - 1 },
       });
     }
   }
@@ -121,4 +125,33 @@ export const scrollToHash = (elementId: string) => {
     block: "center",
     inline: "nearest",
   });
+};
+
+export const getRandomColor = (id: string) => {
+  const colors = [
+    "bg-red-500",
+    "bg-orange-500",
+    "bg-amber-500",
+    "bg-yellow-500",
+    "bg-lime-500",
+    "bg-green-500",
+    "bg-emerald-500",
+    "bg-teal-500",
+    "bg-cyan-500",
+    "bg-sky-500",
+    "bg-blue-500",
+    "bg-indigo-500",
+    "bg-violet-500",
+    "bg-purple-500",
+    "bg-fuchsia-500",
+    "bg-pink-500",
+    "bg-rose-500",
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
 };

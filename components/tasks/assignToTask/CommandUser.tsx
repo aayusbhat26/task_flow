@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CommandItem } from "@/components/ui/command";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { AssignedToTaskUser } from "@/types/extended";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
@@ -58,27 +59,44 @@ export const CommandUser = ({ user, taskId, workspaceId, canEdit }: Props) => {
   });
 
   return (
-    <CommandItem className="p-0">
-      <Button
-        disabled={!canEdit}
-        onClick={() => {
+    <CommandItem
+      value={user.user.username}
+      keywords={[user.user.username]}
+      onSelect={() => {
+        if (canEdit) {
           handleTaskAssignment();
+        } else {
+          toast({
+            title: "Permission Denied",
+            description: "You do not have permission to assign tasks in this workspace.",
+            variant: "destructive",
+          });
+        }
+      }}
+      disabled={false}
+      className={cn("p-2 cursor-pointer", !canEdit && "opacity-50 cursor-not-allowed")}
+    >
+      <div
+        className="flex items-center justify-between w-full"
+        onClick={(e) => {
+          // Fallback click handler in case onSelect doesn't fire
+          if (canEdit) {
+            e.stopPropagation();
+            handleTaskAssignment();
+          }
         }}
-        size={"sm"}
-        variant={"ghost"}
-        className="w-full h-fit justify-between px-2 py-1.5 text-xs"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pointer-events-none">
           <UserAvatar
             profileImage={user.user.image}
             className="w-8 h-8"
             size={10}
           />
-          <p className="text-secondary-foreground">{user.user.username}</p>
+          <p className="text-secondary-foreground text-xs">{user.user.username}</p>
         </div>
 
-        {isActiveUser && <Check className="text-primary" size={16} />}
-      </Button>
+        {isActiveUser && <Check className="text-primary pointer-events-none" size={16} />}
+      </div>
     </CommandItem>
   );
 };

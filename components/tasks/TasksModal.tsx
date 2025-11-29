@@ -24,7 +24,7 @@ import {
   List,
   RefreshCw
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getRandomColor } from '@/lib/utils';
 import { playTaskCompletionSound } from '@/lib/soundEffects';
 import { useTasks } from '@/hooks/useTasks';
 
@@ -317,7 +317,7 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                                 <div className="flex items-center gap-1">
                                   <Avatar className="w-5 h-5">
                                     <AvatarImage src={task.creator.image} />
-                                    <AvatarFallback className="text-xs">
+                                    <AvatarFallback className={cn("text-[10px] text-white font-semibold", getRandomColor(task.creator.id))}>
                                       {task.creator.name.charAt(0)}
                                     </AvatarFallback>
                                   </Avatar>
@@ -332,7 +332,7 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                                     {task.assignedToTask.slice(0, 3).map((assigned, index) => (
                                       <Avatar key={assigned.user.id} className="w-5 h-5 border-2 border-background">
                                         <AvatarImage src={assigned.user.image} />
-                                        <AvatarFallback className="text-xs">
+                                        <AvatarFallback className={cn("text-[10px] text-white font-semibold", getRandomColor(assigned.user.id))}>
                                           {assigned.user.name.charAt(0)}
                                         </AvatarFallback>
                                       </Avatar>

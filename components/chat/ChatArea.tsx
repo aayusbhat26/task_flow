@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -47,9 +46,23 @@ interface CurrentUser {
   username: string;
 }
 
+interface Message {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    username: string;
+    image?: string | null;
+  };
+  isOptimistic?: boolean;
+}
+
 interface ChatAreaProps {
   workspace: Workspace;
   currentUser: CurrentUser;
+  groupId?: string;
   onOpenMobileMenu?: () => void;
 }
 
@@ -64,10 +77,11 @@ const colorMap = {
   GRAY: 'bg-gray-500',
 };
 
-export function ChatArea({ workspace, currentUser, onOpenMobileMenu }: ChatAreaProps) {
-  const { joinWorkspace, leaveWorkspace } = useSocket();
+export function ChatArea({ workspace, currentUser, groupId, onOpenMobileMenu }: ChatAreaProps) {
+  const { socket, joinWorkspace, leaveWorkspace } = useSocket();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [showMembersSidebar, setShowMembersSidebar] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Use refs to store socket functions to prevent infinite re-renders
   const joinWorkspaceRef = useRef(joinWorkspace);
@@ -96,6 +110,71 @@ export function ChatArea({ workspace, currentUser, onOpenMobileMenu }: ChatAreaP
       }
     };
   }, [workspace.id]); // Only depend on workspace.id
+
+  // Load initial messages
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        setIsLoading(true);
+        const url = groupId
+          ? `/api/chat/messages?groupId=${groupId}`
+          : `/api/chat/messages?workspaceId=${workspace.id}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          setMessages(data);
+        }
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (workspace.id || groupId) {
+      loadMessages();
+    }
+  }, [workspace.id, groupId]);
+
+  // Listen for new messages
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (message: Message) => {
+      setMessages(prev => {
+        // Check if message already exists (by ID)
+        if (prev.some(m => m.id === message.id)) {
+            return prev;
+        }
+        return [...prev, message];
+      });
+    };
+
+    socket.on('new-message', handleNewMessage);
+
+    return () => {
+      socket.off('new-message', handleNewMessage);
+    };
+  }, [socket]);
+
+  const handleOptimisticMessage = (message: Message) => {
+    setMessages(prev => [...prev, message]);
+  };
+
+  const handleMessageConfirmed = (tempId: string, realMessage: Message) => {
+    setMessages(prev => {
+      // Check if the real message already exists (e.g. came from socket before API response)
+      const exists = prev.some(m => m.id === realMessage.id);
+
+      if (exists) {
+          // If real message exists, just remove the optimistic one to avoid duplicates
+          return prev.filter(m => m.id !== tempId);
+      }
+
+      // Otherwise, replace optimistic with real
+      return prev.map(m => m.id === tempId ? realMessage : m);
+    });
+  };
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -128,24 +207,11 @@ export function ChatArea({ workspace, currentUser, onOpenMobileMenu }: ChatAreaP
               <p className="text-sm text-gray-500 flex items-center">
                 <Users className="w-3 h-3 mr-1 flex-shrink-0" />
                 <span className="truncate">{workspace._count.subscribers} members</span>
-                <span className="mx-2">•</span>
-                <div className="w-2 h-2 bg-green-400 rounded-full mr-1 flex-shrink-0"></div>
-                <span className="text-green-600 font-medium truncate">{workspace.subscribers.length} online</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 flex-shrink-0">
-            {/* Mobile members toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 lg:hidden p-1"
-              onClick={() => setShowMembersSidebar(!showMembersSidebar)}
-            >
-              <Users className="w-4 h-4" />
-            </Button>
-
             <Button
               variant="ghost"
               size="sm"
@@ -162,126 +228,18 @@ export function ChatArea({ workspace, currentUser, onOpenMobileMenu }: ChatAreaP
         {/* Main Chat */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <MessageList
-            workspaceId={workspace.id}
+            messages={messages}
+            isLoading={isLoading}
             currentUser={currentUser}
           />
           <ChatInput
             workspaceId={workspace.id}
+            groupId={groupId}
             currentUser={currentUser}
+            onOptimisticMessage={handleOptimisticMessage}
+            onMessageConfirmed={handleMessageConfirmed}
           />
         </div>
-
-        {/* Members Sidebar - Desktop */}
-        <div className="hidden lg:block w-64 bg-gray-50 border-l border-gray-200 p-4 flex-shrink-0 overflow-hidden">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-            <Users className="w-4 h-4 mr-2 text-blue-600" />
-            Members
-            <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">
-              {workspace.subscribers.length}
-            </Badge>
-          </h3>
-          <ScrollArea className="h-full">
-            <div className="space-y-2">
-              {workspace.subscribers.map((subscription) => (
-                <div
-                  key={subscription.user.id}
-                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white transition-all duration-200 border border-transparent hover:border-gray-200"
-                >
-                  <div className="relative flex-shrink-0">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage
-                        src={subscription.user.image || ''}
-                        alt={subscription.user.name}
-                      />
-                      <AvatarFallback className="bg-blue-500 text-white font-semibold">
-                        {subscription.user.name?.charAt(0) ||
-                         subscription.user.username?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {subscription.user.name || subscription.user.username}
-                      {subscription.user.id === currentUser.id && (
-                        <span className="text-blue-600 font-normal ml-1 text-xs">(you)</span>
-                      )}
-                    </p>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
-                      <span className="text-xs text-green-600">Online</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Members Sidebar - Mobile Overlay */}
-        {showMembersSidebar && (
-          <>
-            <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-              onClick={() => setShowMembersSidebar(false)}
-            />
-            <div className="fixed top-0 right-0 bottom-0 w-80 bg-white border-l border-gray-200 p-4 z-50 lg:hidden overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900 flex items-center">
-                  <Users className="w-4 h-4 mr-2 text-blue-600" />
-                  Members
-                  <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">
-                    {workspace.subscribers.length}
-                  </Badge>
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowMembersSidebar(false)}
-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-              <ScrollArea className="h-full">
-                <div className="space-y-2">
-                  {workspace.subscribers.map((subscription) => (
-                    <div
-                      key={subscription.user.id}
-                      className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="relative flex-shrink-0">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage
-                            src={subscription.user.image || ''}
-                            alt={subscription.user.name}
-                          />
-                          <AvatarFallback className="bg-blue-500 text-white font-semibold">
-                            {subscription.user.name?.charAt(0) ||
-                             subscription.user.username?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {subscription.user.name || subscription.user.username}
-                          {subscription.user.id === currentUser.id && (
-                            <span className="text-blue-600 font-normal ml-1 text-xs">(you)</span>
-                          )}
-                        </p>
-                        <div className="flex items-center">
-                          <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
-                          <span className="text-xs text-green-600">Online</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

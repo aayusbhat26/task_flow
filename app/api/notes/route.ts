@@ -1,7 +1,7 @@
-import { getAuthSession } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { getAuthSession } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 // Enhanced note schemas
 const createNoteSchema = z.object({
@@ -9,20 +9,38 @@ const createNoteSchema = z.object({
   icon: z.string().optional(),
   coverImage: z.string().optional(),
   workspaceId: z.string().optional(),
+  groupId: z.string().optional(),
   parentId: z.string().optional(),
   isPublic: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   // Legacy block-based format
-  blocks: z.array(z.object({
-    id: z.string(),
-    type: z.enum(['TEXT', 'HEADING_1', 'HEADING_2', 'HEADING_3', 'BULLET_LIST', 'NUMBERED_LIST', 'TODO', 'QUOTE', 'CODE', 'DIVIDER', 'CALLOUT', 'IMAGE']),
-    content: z.string(),
-    properties: z.record(z.any()).optional(),
-    position: z.number()
-  })).optional(),
+  blocks: z
+    .array(
+      z.object({
+        id: z.string(),
+        type: z.enum([
+          "TEXT",
+          "HEADING_1",
+          "HEADING_2",
+          "HEADING_3",
+          "BULLET_LIST",
+          "NUMBERED_LIST",
+          "TODO",
+          "QUOTE",
+          "CODE",
+          "DIVIDER",
+          "CALLOUT",
+          "IMAGE",
+        ]),
+        content: z.string(),
+        properties: z.record(z.any()).optional(),
+        position: z.number(),
+      })
+    )
+    .optional(),
   // New markdown content format
   content: z.string().optional(),
-  templateId: z.string().optional()
+  templateId: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -30,19 +48,33 @@ export async function GET(request: NextRequest) {
     const session = await getAuthSession();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
-    const isArchived = searchParams.get('archived') === 'true';
-    const isFavorite = searchParams.get('favorite') === 'true';
-    const search = searchParams.get('search');
+    const workspaceId = searchParams.get("workspaceId");
+    const groupId = searchParams.get("groupId");
+    const isArchived = searchParams.get("archived") === "true";
+    const isFavorite = searchParams.get("favorite") === "true";
+    const search = searchParams.get("search");
 
     let where: any = {
-      authorId: session.user.id,
       parentId: null, // Only root-level notes
     };
+
+    if (groupId) {
+      where.groupId = groupId;
+      // Ensure user is a member of the group
+      where.group = {
+        members: {
+          some: {
+            id: session.user.id,
+          },
+        },
+      };
+    } else {
+      where.authorId = session.user.id;
+    }
 
     if (workspaceId) {
       where.workspaceId = workspaceId;
@@ -59,19 +91,19 @@ export async function GET(request: NextRequest) {
         {
           title: {
             contains: search,
-            mode: 'insensitive'
-          }
+            mode: "insensitive",
+          },
         },
         {
           blocks: {
             some: {
               content: {
                 contains: search,
-                mode: 'insensitive'
-              }
-            }
-          }
-        }
+                mode: "insensitive",
+              },
+            },
+          },
+        },
       ];
     }
 
@@ -84,19 +116,25 @@ export async function GET(request: NextRequest) {
             name: true,
             username: true,
             image: true,
-          }
+          },
         },
         workspace: {
           select: {
             id: true,
             name: true,
             color: true,
-          }
+          },
+        },
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
         blocks: {
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         children: {
           select: {
@@ -106,27 +144,24 @@ export async function GET(request: NextRequest) {
             position: true,
           },
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         _count: {
           select: {
             blocks: true,
             children: true,
-          }
-        }
+          },
+        },
       },
-      orderBy: [
-        { isFavorite: 'desc' },
-        { updatedAt: 'desc' }
-      ]
+      orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
     });
 
     return NextResponse.json(notes);
   } catch (error) {
-    console.error('Error fetching notes:', error);
+    console.error("Error fetching notes:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -137,7 +172,7 @@ export async function POST(request: NextRequest) {
     const session = await getAuthSession();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -148,22 +183,25 @@ export async function POST(request: NextRequest) {
       // Update user's total notes count
       await tx.user.update({
         where: { id: session.user.id },
-        data: { totalNotesCreated: { increment: 1 } }
+        data: { totalNotesCreated: { increment: 1 } },
       });
 
       const newNote = await tx.note.create({
         data: {
-          title: data.title || 'Untitled',
-          icon: data.icon || '📝',
+          title: data.title || "Untitled",
+          icon: data.icon || "📝",
           coverImage: data.coverImage,
           workspaceId: data.workspaceId,
+          groupId: data.groupId,
           parentId: data.parentId,
           isPublic: data.isPublic || false,
           authorId: session.user.id,
           position: 0, // Will be updated based on current notes count
           templateId: data.templateId,
-          content: data.content || '# Welcome to your new note!\n\nStart writing your thoughts in **Markdown**...'
-        }
+          content:
+            data.content ||
+            "# Welcome to your new note!\n\nStart writing your thoughts in **Markdown**...",
+        },
       });
 
       // Handle tags - using direct relation
@@ -173,8 +211,8 @@ export async function POST(request: NextRequest) {
             data: {
               name: tagName,
               color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-              noteId: newNote.id
-            }
+              noteId: newNote.id,
+            },
           });
         }
       }
@@ -186,8 +224,8 @@ export async function POST(request: NextRequest) {
           const block = blocksToCreate[i];
           // Combine content and properties into a single JSON structure
           const blockContent = {
-            text: block.content || '',
-            ...block.properties
+            text: block.content || "",
+            ...block.properties,
           };
 
           await tx.noteBlock.create({
@@ -198,7 +236,7 @@ export async function POST(request: NextRequest) {
               content: blockContent,
               position: block.position !== undefined ? block.position : i,
               createdById: session.user.id,
-            }
+            },
           });
         }
       }
@@ -208,10 +246,10 @@ export async function POST(request: NextRequest) {
         data: {
           noteId: newNote.id,
           content: data.content || JSON.stringify(data.blocks || []),
-          title: data.title || 'Untitled',
+          title: data.title || "Untitled",
           version: 1,
-          changeBy: session.user.id
-        }
+          changeBy: session.user.id,
+        },
       });
 
       return newNote;
@@ -227,19 +265,25 @@ export async function POST(request: NextRequest) {
             name: true,
             username: true,
             image: true,
-          }
+          },
         },
         workspace: {
           select: {
             id: true,
             name: true,
             color: true,
-          }
+          },
+        },
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
         blocks: {
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         children: {
           select: {
@@ -249,8 +293,8 @@ export async function POST(request: NextRequest) {
             position: true,
           },
           orderBy: {
-            position: 'asc'
-          }
+            position: "asc",
+          },
         },
         tags: true,
         collaborators: {
@@ -260,47 +304,47 @@ export async function POST(request: NextRequest) {
                 id: true,
                 name: true,
                 username: true,
-                image: true
-              }
-            }
-          }
+                image: true,
+              },
+            },
+          },
         },
         links: {
           include: {
             targetNote: {
               select: {
                 id: true,
-                title: true
-              }
-            }
-          }
+                title: true,
+              },
+            },
+          },
         },
         linkedBy: {
           include: {
             sourceNote: {
               select: {
                 id: true,
-                title: true
-              }
-            }
-          }
+                title: true,
+              },
+            },
+          },
         },
         _count: {
           select: {
             blocks: true,
             children: true,
-            history: true
-          }
-        }
-      }
+            history: true,
+          },
+        },
+      },
     });
 
     // Check for achievements after note creation
     try {
-      const { GamingService } = await import('@/services/gamingService');
+      const { GamingService } = await import("@/services/gamingService");
       await GamingService.checkAchievements(session.user.id);
     } catch (error) {
-      console.error('Error checking achievements:', error);
+      console.error("Error checking achievements:", error);
       // Don't fail the note creation if achievement checking fails
     }
 
@@ -308,14 +352,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: "Invalid request data", details: error.errors },
         { status: 400 }
       );
     }
 
-    console.error('Error creating note:', error);
+    console.error("Error creating note:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

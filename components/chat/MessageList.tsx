@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-import { useSocket } from '@/context/SocketProvider';
+import { cn, getRandomColor } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -16,6 +15,7 @@ interface Message {
     username: string;
     image?: string | null;
   };
+  isOptimistic?: boolean;
 }
 
 interface CurrentUser {
@@ -27,57 +27,18 @@ interface CurrentUser {
 }
 
 interface MessageListProps {
-  workspaceId: string;
+  messages: Message[];
+  isLoading: boolean;
   currentUser: CurrentUser;
 }
 
-export function MessageList({ workspaceId, currentUser }: MessageListProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { socket } = useSocket();
+export function MessageList({ messages, isLoading, currentUser }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  // Load initial messages
-  useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch(`/api/chat/messages?workspaceId=${workspaceId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setMessages(data);
-        }
-      } catch (error) {
-        console.error('Failed to load messages:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (workspaceId) {
-      loadMessages();
-    }
-  }, [workspaceId]);
-
-  // Listen for new messages
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleNewMessage = (message: Message) => {
-      setMessages(prev => [...prev, message]);
-    };
-
-    socket.on('new-message', handleNewMessage);
-
-    return () => {
-      socket.off('new-message', handleNewMessage);
-    };
-  }, [socket]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -107,7 +68,7 @@ export function MessageList({ workspaceId, currentUser }: MessageListProps) {
   // Group messages by date
   const groupMessagesByDate = (messages: Message[]) => {
     const groups: { [key: string]: Message[] } = {};
-    
+
     messages.forEach(message => {
       const date = new Date(message.createdAt).toDateString();
       if (!groups[date]) {
@@ -166,37 +127,37 @@ export function MessageList({ workspaceId, currentUser }: MessageListProps) {
                   const isCurrentUser = message.author.id === currentUser.id;
                   const prevMessage = index > 0 ? dayMessages[index - 1] : null;
                   const showAvatar = !prevMessage || prevMessage.author.id !== message.author.id;
-                  
+
                   return (
                     <div
                       key={message.id}
                       className={cn(
                         "flex items-start space-x-3 hover:bg-gray-50 -mx-2 px-2 py-2 rounded-lg transition-colors group",
-                        !showAvatar && "ml-11"
+                        isCurrentUser && "flex-row-reverse space-x-reverse"
                       )}
                     >
                       {showAvatar ? (
                         <Avatar className="w-8 h-8 flex-shrink-0">
-                          <AvatarImage 
-                            src={message.author.image || ''} 
-                            alt={message.author.name} 
+                          <AvatarImage
+                            src={message.author.image || ''}
+                            alt={message.author.name}
                           />
-                          <AvatarFallback className="bg-blue-500 text-white font-semibold">
-                            {message.author.name?.charAt(0) || 
+                          <AvatarFallback className={cn("text-white font-semibold", getRandomColor(message.author.id))}>
+                            {message.author.name?.charAt(0) ||
                              message.author.username?.charAt(0) || 'U'}
                           </AvatarFallback>
                         </Avatar>
                       ) : (
-                        <div className="w-8 h-8 flex items-center justify-center">
+                        <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
                           <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
                             {formatTime(message.createdAt)}
                           </span>
                         </div>
                       )}
-                      
-                      <div className="flex-1 min-w-0">
+
+                      <div className={cn("flex-1 min-w-0", isCurrentUser && "flex flex-col items-end")}>
                         {showAvatar && (
-                          <div className="flex items-center space-x-2 mb-1">
+                          <div className={cn("flex items-center space-x-2 mb-1", isCurrentUser && "flex-row-reverse space-x-reverse")}>
                             <span className="font-semibold text-sm text-gray-900 truncate">
                               {message.author.name || message.author.username}
                               {isCurrentUser && (
@@ -208,13 +169,14 @@ export function MessageList({ workspaceId, currentUser }: MessageListProps) {
                             </span>
                           </div>
                         )}
-                        
+
                         <div className={cn(
                           "rounded-lg px-3 py-2 max-w-full lg:max-w-2xl border",
-                          isCurrentUser 
-                            ? "bg-blue-500 text-white border-blue-500 ml-8" 
+                          isCurrentUser
+                            ? "bg-blue-500 text-white border-blue-500"
                             : "bg-white border-gray-200",
-                          !showAvatar && "mt-1"
+                          !showAvatar && "mt-1",
+                          message.isOptimistic && "opacity-70"
                         )}>
                           <p className={cn(
                             "text-sm whitespace-pre-wrap break-words",

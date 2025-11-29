@@ -42,9 +42,11 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useChangeLocale } from "@/hooks/useChangeLocale";
 import { LoadingState } from "@/components/ui/loadingState";
+import { Switch } from "@/components/ui/switch";
 
 interface Props {
   session: Session;
+  showDSA: boolean;
 }
 
 const languages = [
@@ -62,6 +64,7 @@ export const AccountInfo = ({
   session: {
     user: { image, name, surname, username },
   },
+  showDSA,
 }: Props) => {
   const t = useTranslations("SETTINGS");
   const m = useTranslations("MESSAGES");
@@ -76,6 +79,7 @@ export const AccountInfo = ({
       language: lang,
       name: name ? name : "",
       surname: surname ? surname : "",
+      showDSA: showDSA,
     },
   });
 
@@ -258,6 +262,32 @@ export const AccountInfo = ({
                 />
               </div>
             </div>
+
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="showDSA"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        DSA Features
+                      </FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Enable Data Structures & Algorithms features (Questions, Progress, etc.)
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <Button disabled={isPending} className="text-white" type="submit">
               {isPending ? (
                 <LoadingState loadingText={t("ACCOUNT.PENDING_BTN")} />

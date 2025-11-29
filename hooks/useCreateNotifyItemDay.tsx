@@ -44,10 +44,11 @@ export const useCreateNotifyItemDay = (
           ? t("ROLES.CAN_EDIT")
           : t("ROLES.READ_ONLY");
       link = `/dashboard/workspace/${workspace?.id}`;
-      textContent = t("NEW_USER_IN_WORKSPACE_TEXT", {
+      textContent = t("NEW_ROLE_TEXT", {
         name: workspace?.name,
         role,
       });
+      break;
     case "NEW_ASSIGNMENT_TASK":
       link = `/dashboard/workspace/${workspace?.id}/tasks/task/${taskId}`;
       textContent = t("NEW_ASSIGNMENT_TASK_TEXT", { name: workspace?.name });

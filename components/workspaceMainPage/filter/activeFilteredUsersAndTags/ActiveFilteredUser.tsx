@@ -18,7 +18,13 @@ export const ActiveFilteredUser = ({ username, id, image }: Props) => {
       variant={"outline"}
       className="w-fit h-9 flex gap-2 items-center px-2 py-1.5 text-xs rounded-lg"
     >
-      <UserAvatar className="w-6 h-6" size={10} profileImage={image} />
+      <UserAvatar
+        className="w-6 h-6"
+        size={10}
+        profileImage={image}
+        userId={id}
+        fallbackText={username?.charAt(0).toUpperCase()}
+      />
       <p className="text-secondary-foreground">{text}</p>
     </Button>
   );

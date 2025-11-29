@@ -2,7 +2,7 @@
 
 import { Workspace } from "@prisma/client";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-// import { useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { createContext, useContext } from "react";
 
 interface Props {
@@ -15,9 +15,7 @@ export const UserEditableWorkspacesCtx = createContext<UseQueryResult<
 > | null>(null);
 
 export const UserEditableWorkspacesProvider = ({ children }: Props) => {
-  // Temporarily disabled session to fix React hooks error
-  // const { data } = useSession();
-  const data = { user: { id: "test-user-id" } }; // Mock session data
+  const { data } = useSession();
 
   const queryData = useQuery<Workspace[], Error>({
     queryFn: async () => {

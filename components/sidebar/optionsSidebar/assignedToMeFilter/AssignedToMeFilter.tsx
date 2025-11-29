@@ -8,6 +8,7 @@ import { LayoutGrid } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AssignedToMeWorkspace } from "./AssignedToMeWorkspace";
 import { useGetAssignedToMeParams } from "@/hooks/useGetAssignedToMeParams";
+import { useState } from "react";
 
 interface Props {
   userWorkspaces: Workspace[];

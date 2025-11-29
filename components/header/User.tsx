@@ -21,7 +21,8 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
-import { getUserDisplayName, getUserInitials } from "@/lib/userUtils";
+import { getUserDisplayName } from "@/lib/userUtils";
+import { cn, getRandomColor } from "@/lib/utils";
 
 interface Props {
   profileImage?: string | null;
@@ -39,21 +40,22 @@ export const User = ({ profileImage, username, email, name, surname }: Props) =>
 
   const user = { name, surname, username, email, image: profileImage };
   const displayName = getUserDisplayName(user);
-  const initials = getUserInitials(user);
+  const initials = displayName.charAt(0).toUpperCase();
 
   const logOutHandler = () => {
     signOut({
       callbackUrl: `${window.location.origin}/${lang}`,
     });
   };
-  
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background ml-2">
-        <UserAvatar 
-          className="w-10 h-10" 
-          profileImage={profileImage} 
+        <UserAvatar
+          className="w-10 h-10"
+          profileImage={profileImage}
           fallbackText={initials}
+          userId={user.id || user.username || user.email}
         />
       </DropdownMenuTrigger>
              <DropdownMenuContent align="end" sideOffset={10} className="w-64 z-50 relative">
@@ -67,7 +69,10 @@ export const User = ({ profileImage, username, email, name, surname }: Props) =>
               height={40}
             />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white",
+              getRandomColor(user.id || user.username || user.email)
+            )}>
               {initials}
             </div>
           )}

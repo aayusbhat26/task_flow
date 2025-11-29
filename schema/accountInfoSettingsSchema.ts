@@ -13,6 +13,7 @@ export const accountInfoSettingsSchema = z.object({
   }),
   name: z.string().optional(),
   surname: z.string().optional(),
+  showDSA: z.boolean().optional(),
 });
 
 export type AccountInfoSettingsSchema = z.infer<

@@ -13,12 +13,14 @@ interface Props {
   userWorkspaces: Workspace[];
   userId: string;
   userAdminWorkspaces: Workspace[];
+  showDSA: boolean;
 }
 
 export const SidebarContainer = ({
   userWorkspaces,
   userId,
   userAdminWorkspaces,
+  showDSA,
 }: Props) => {
   const pathname = usePathname();
   const { isOpen, setIsOpen } = useToggleSidebar();
@@ -56,8 +58,9 @@ export const SidebarContainer = ({
           userWorkspaces={workspaces}
           createdWorkspaces={createdWorkspaces.length}
           refetchWorkspaces={refetchWorkspaces}
+          showDSA={showDSA}
         />
-        {!(pathname && pathname.includes("/notes") || (pathname && pathname.includes("/chat"))) && (
+        {!(pathname && (pathname.includes("/notes") || pathname.includes("/chat") || pathname.includes("/groups/"))) && (
           <OptionsSidebar
             createdWorkspaces={createdWorkspaces.length}
             userAdminWorkspaces={userAdminWorkspaces}

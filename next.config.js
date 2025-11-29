@@ -1,4 +1,5 @@
 const nextConfig = {
+  output: "standalone",
   poweredByHeader: false,
   compress: true,
 
@@ -7,10 +8,10 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["next-auth"],
     optimizePackageImports: [
-      '@radix-ui/react-icons',
-      'lucide-react',
-      '@tanstack/react-query',
-      'next-intl'
+      "@radix-ui/react-icons",
+      "lucide-react",
+      "@tanstack/react-query",
+      "next-intl",
     ],
     swcMinify: true,
     workerThreads: false,
@@ -31,7 +32,7 @@ const nextConfig = {
 
   // Add performance optimizations
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === "production",
   },
 
   // Optimize bundle splitting
@@ -39,17 +40,17 @@ const nextConfig = {
     if (!dev && !isServer) {
       // Optimize bundle splitting for production
       config.optimization.splitChunks = {
-        chunks: 'all',
+        chunks: "all",
         cacheGroups: {
           vendor: {
             test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
+            name: "vendors",
+            chunks: "all",
           },
           common: {
-            name: 'common',
+            name: "common",
             minChunks: 2,
-            chunks: 'all',
+            chunks: "all",
             enforce: true,
           },
         },
@@ -59,7 +60,7 @@ const nextConfig = {
   },
 
   images: {
-    formats: ['image/webp', 'image/avif'],
+    formats: ["image/webp", "image/avif"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 365,
@@ -69,7 +70,7 @@ const nextConfig = {
       { protocol: "https", hostname: "utfs.io" },
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
     ],
-  }
+  },
 };
 
 const withNextIntl = require("next-intl/plugin")("./i18n.ts");

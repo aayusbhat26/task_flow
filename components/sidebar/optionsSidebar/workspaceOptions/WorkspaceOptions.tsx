@@ -12,6 +12,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
+import { GroupsList } from "../groups/GroupsList";
+
 interface Props {
   workspaceId: string;
 }
@@ -70,6 +72,7 @@ export const WorkspaceOptions = ({ workspaceId }: Props) => {
           <NewMindMap workspaceId={workspaceId} />
         </div>
       </div>
+      <GroupsList workspaceId={workspaceId} />
       <UsersContainer />
     </div>
   );

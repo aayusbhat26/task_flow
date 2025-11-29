@@ -877,8 +877,8 @@ const VisualTableEditor: React.FC<VisualTableEditorProps> = ({ isOpen, onSave, o
   // Initialize table data when modal opens
   useEffect(() => {
     if (isOpen) {
-      const newData = Array(rows).fill(null).map((_, rowIndex) => 
-        Array(cols).fill(null).map((_, colIndex) => 
+      const newData = Array(rows).fill(null).map((_, rowIndex) =>
+        Array(cols).fill(null).map((_, colIndex) =>
           rowIndex === 0 ? `Header ${colIndex + 1}` : ''
         )
       );
@@ -901,12 +901,12 @@ const VisualTableEditor: React.FC<VisualTableEditorProps> = ({ isOpen, onSave, o
 
   const generateMarkdown = () => {
     if (tableData.length === 0) return '';
-    
+
     const [headerRow, ...dataRows] = tableData;
-    
+
     // Generate header row
     const headerMarkdown = '| ' + headerRow.join(' | ') + ' |';
-    
+
     // Generate alignment row
     const alignmentMarkdown = '| ' + headerAlignments.map(align => {
       switch (align) {
@@ -915,12 +915,12 @@ const VisualTableEditor: React.FC<VisualTableEditorProps> = ({ isOpen, onSave, o
         default: return '---';
       }
     }).join(' | ') + ' |';
-    
+
     // Generate data rows
-    const dataMarkdown = dataRows.map(row => 
+    const dataMarkdown = dataRows.map(row =>
       '| ' + row.join(' | ') + ' |'
     ).join('\n');
-    
+
     return [headerMarkdown, alignmentMarkdown, dataMarkdown].join('\n');
   };
 
@@ -963,7 +963,7 @@ const VisualTableEditor: React.FC<VisualTableEditorProps> = ({ isOpen, onSave, o
             <X className="w-3 h-3 sm:w-4 sm:h-4" />
           </Button>
         </div>
-        
+
         <div className="p-3 sm:p-4 border-b border-border">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -990,7 +990,7 @@ const VisualTableEditor: React.FC<VisualTableEditorProps> = ({ isOpen, onSave, o
             </div>
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-auto p-3 sm:p-4">
           <div className="border border-border rounded-lg overflow-hidden bg-background">
             <table className="w-full">
@@ -1058,7 +1058,7 @@ const VisualTableEditor: React.FC<VisualTableEditorProps> = ({ isOpen, onSave, o
             </table>
           </div>
         </div>
-        
+
         <div className="flex justify-end space-x-2 p-3 sm:p-4 border-t border-border flex-shrink-0">
           <Button variant="outline" onClick={onCancel} className="text-xs sm:text-sm px-3 sm:px-4">
             Cancel
@@ -1137,11 +1137,11 @@ export function MarkdownNotesEditor({
       setContent(note.content || '');
       setTitle(note.title || 'Untitled');
       setIcon(note.icon || '📝');
-      
+
       // Set original values for comparison
       originalContent.current = note.content || '';
       originalTitle.current = note.title || 'Untitled';
-      
+
       // Mark as saved since we're loading fresh content
       onSetStatus('saved');
     } else {
@@ -1150,6 +1150,44 @@ export function MarkdownNotesEditor({
       setIcon('📝');
     }
   }, [note?.id]);
+
+  // Handle real-time updates from other users
+  useEffect(() => {
+    if (note?.id && (note.content !== undefined || note.title !== undefined)) {
+      // If content matches what we have, do nothing
+      if (note.content === content && note.title === title) return;
+
+      // Check if we have unsaved changes
+      const hasUnsavedChanges = content !== originalContent.current || title !== originalTitle.current;
+
+      if (!hasUnsavedChanges) {
+        // Safe to update since we are in sync with the last known server state
+        if (note.content !== undefined && note.content !== content) {
+          setContent(note.content);
+          originalContent.current = note.content;
+        }
+        if (note.title !== undefined && note.title !== title) {
+          setTitle(note.title);
+          originalTitle.current = note.title;
+        }
+        if (note.icon !== undefined && note.icon !== icon) {
+          setIcon(note.icon);
+        }
+      } else {
+        // We have local changes. Check if the incoming update is actually new/different from what we started with.
+        // This avoids conflict warnings for our own updates that are just echoing back.
+        const isExternalContentUpdate = note.content !== undefined && note.content !== originalContent.current;
+        const isExternalTitleUpdate = note.title !== undefined && note.title !== originalTitle.current;
+
+        if (isExternalContentUpdate || isExternalTitleUpdate) {
+           toast({
+               title: "Update Available",
+               description: "Another user updated this note. Save your changes to sync.",
+           });
+        }
+      }
+    }
+  }, [note?.content, note?.title, note?.icon]);
 
   // Handle todo toggle events from markdown rendering
   useEffect(() => {
@@ -1169,7 +1207,7 @@ export function MarkdownNotesEditor({
     const currentNoteId = note?.id;
     const currentTitle = titleRef.current;
     const currentContent = contentRef.current;
-    
+
     if (!currentNoteId) return;
 
     try {
@@ -1177,15 +1215,15 @@ export function MarkdownNotesEditor({
 
       // Save to localStorage for instant recovery
       const cacheKey = `note-draft-${currentNoteId}`;
-      localStorage.setItem(cacheKey, JSON.stringify({ 
-        title: currentTitle, 
-        content: currentContent, 
-        timestamp: Date.now() 
+      localStorage.setItem(cacheKey, JSON.stringify({
+        title: currentTitle,
+        content: currentContent,
+        timestamp: Date.now()
       }));
 
-      await onNoteUpdate(currentNoteId, { 
-        title: currentTitle, 
-        content: currentContent 
+      await onNoteUpdate(currentNoteId, {
+        title: currentTitle,
+        content: currentContent
       });
 
       // Update original values to match saved content
@@ -1208,20 +1246,20 @@ export function MarkdownNotesEditor({
   // Track original content to properly detect changes
   const originalContent = useRef<string>('');
   const originalTitle = useRef<string>('');
-  
+
   // Refs for stable access to current values in debounced functions
   const contentRef = useRef<string>('');
   const titleRef = useRef<string>('');
-  
+
   // Keep refs updated with current state
   useEffect(() => {
     contentRef.current = content;
   }, [content]);
-  
+
   useEffect(() => {
     titleRef.current = title;
   }, [title]);
-  
+
   // Update original values when note changes
   useEffect(() => {
     if (note) {
@@ -1232,21 +1270,21 @@ export function MarkdownNotesEditor({
 
   // Store debouncedSave in ref to avoid dependency issues
   const debouncedSaveRef = useRef(debouncedSave);
-  
+
   // Update ref when debouncedSave changes
   useEffect(() => {
     debouncedSaveRef.current = debouncedSave;
   }, [debouncedSave]);
-  
+
   // Mark as unsaved when content changes and trigger auto-save
   useEffect(() => {
     if (!note?.id) {
       return;
     }
-    
+
     const hasContentChanged = content !== originalContent.current;
     const hasTitleChanged = title !== originalTitle.current;
-    
+
     if (hasContentChanged || hasTitleChanged) {
       onSetStatus('unsaved');
       debouncedSaveRef.current();
@@ -1499,18 +1537,18 @@ export function MarkdownNotesEditor({
       const start = textarea.selectionStart;
       const beforeText = content.slice(0, start);
       const afterText = content.slice(start);
-      
+
       const needsNewlineBefore = beforeText && !beforeText.endsWith('\n\n');
       const needsNewlineAfter = afterText && !afterText.startsWith('\n\n');
-      
+
       const prefix = needsNewlineBefore ? (beforeText.endsWith('\n') ? '\n' : '\n\n') : '';
       const suffix = needsNewlineAfter ? (afterText.startsWith('\n') ? '\n' : '\n\n') : '';
-      
+
       const newContent = beforeText + prefix + markdown + suffix + afterText;
-      
+
       setContent(newContent);
       setShowTableEditor(false);
-      
+
       setTimeout(() => {
         if (textareaRef.current) {
           const newCursorPos = start + prefix.length + markdown.length + suffix.length;
