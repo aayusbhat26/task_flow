@@ -21,6 +21,9 @@ COPY prisma ../prisma
 # Install dependencies
 RUN npm install --ignore-scripts --legacy-peer-deps
 
+# Rebuild bcrypt to ensure it matches the container architecture
+RUN npm rebuild bcrypt --build-from-source
+
 # Install prisma CLI explicitly to ensure it's available
 # RUN npm install -g prisma@5.22.0
 
