@@ -21,6 +21,9 @@ COPY prisma ../prisma
 # Install dependencies
 RUN npm install --ignore-scripts --legacy-peer-deps
 
+# Install build tools for native modules (bcrypt)
+RUN apk add --no-cache make gcc g++ python3
+
 # Rebuild bcrypt to ensure it matches the container architecture
 RUN npm rebuild bcrypt --build-from-source
 

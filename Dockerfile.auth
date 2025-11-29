@@ -14,8 +14,20 @@ COPY prisma ./prisma
 # Install dependencies
 RUN npm install --ignore-scripts --legacy-peer-deps
 
-# Generate Prisma client
-RUN npx prisma generate --schema=./prisma/schema.prisma
+# Install build tools for native modules (bcrypt)
+RUN apk add --no-cache make gcc g++ python3
+
+# Rebuild bcrypt to ensure it matches the container architecture
+RUN npm rebuild bcrypt --build-from-source
+
+# Install prisma CLI explicitly to ensure it's available
+RUN npm install -g prisma@5.22.0
+
+# Set environment variable to skip auto-install
+ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
+
+# Generate Prisma client using the global binary directly
+RUN prisma generate --schema=./prisma/schema.prisma
 
 # Copy auth-service source code
 COPY auth-service/src ./src
@@ -25,4 +37,4 @@ COPY auth-service/tsconfig.json ./
 RUN npm run build --workspace=auth-service
 
 EXPOSE 3003
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]
