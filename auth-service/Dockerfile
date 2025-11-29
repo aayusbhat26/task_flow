@@ -20,6 +20,9 @@ COPY prisma ../prisma
 # Install dependencies
 RUN npm install --ignore-scripts
 
+# Install prisma CLI explicitly to ensure it's available
+RUN npm install -g prisma@5.22.0
+
 # Copy source code
 COPY auth-service/src ./src
 COPY auth-service/tsconfig.json ./
