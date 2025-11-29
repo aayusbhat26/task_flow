@@ -12,7 +12,7 @@ COPY auth-service/package*.json ./auth-service/
 COPY prisma ./prisma
 
 # Install dependencies
-RUN npm install --ignore-scripts
+RUN npm install --ignore-scripts --legacy-peer-deps
 
 # Generate Prisma client
 RUN npx prisma generate --schema=./prisma/schema.prisma

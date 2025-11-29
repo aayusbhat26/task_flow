@@ -18,7 +18,7 @@ RUN sed -i '/postinstall/d' package.json
 COPY prisma ../prisma
 
 # Install dependencies
-RUN npm install --ignore-scripts
+RUN npm install --ignore-scripts --legacy-peer-deps
 
 # Install prisma CLI explicitly to ensure it's available
 RUN npm install -g prisma@5.22.0
