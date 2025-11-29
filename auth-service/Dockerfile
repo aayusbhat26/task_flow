@@ -27,8 +27,8 @@ RUN npm install -g prisma@5.22.0
 COPY auth-service/src ./src
 COPY auth-service/tsconfig.json ./
 
-# Generate Prisma client
-RUN npx prisma generate --schema=../prisma/schema.prisma
+# Generate Prisma client using the global binary directly
+RUN prisma generate --schema=../prisma/schema.prisma
 
 # Build TypeScript
 RUN npm run build
