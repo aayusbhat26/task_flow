@@ -1,22 +1,15 @@
 FROM node:20-alpine
 
-# Install OpenSSL for Prisma
 RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Copy package files
+# Copy root and workspace package.json
 COPY package.json ./package.json
 COPY auth-service/package*.json ./auth-service/
 
-# Copy root package.json to resolve "file:.." dependency
-# COPY package.json /package.json
-
- # Remove postinstall script to prevent premature prisma generate
-# RUN sed -i '/postinstall/d' package.json
-
-# Copy prisma schema from root
-COPY prisma ../prisma
+# Copy prisma folder into /app/prisma (IMPORTANT)
+COPY prisma ./prisma
 
 # Install dependencies
 RUN npm install --ignore-scripts --legacy-peer-deps
@@ -28,23 +21,20 @@ RUN apk add --no-cache make gcc g++ python3
 RUN npm rebuild bcrypt --build-from-source
 
 # Install prisma CLI explicitly to ensure it's available
-# RUN npm install -g prisma@5.22.0
-
-
+RUN npm install -g prisma@5.22.0
 
 # Set environment variable to skip auto-install
-# ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
+ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
 
 # Generate Prisma client using the global binary directly
-RUN npx prisma generate --schema=../prisma/schema.prisma
+RUN prisma generate --schema=./prisma/schema.prisma
 
-# Copy source code
+# Copy auth-service source code
 COPY auth-service/src ./src
 COPY auth-service/tsconfig.json ./
 
-# Build TypeScript
+# Build only auth-service workspace
 RUN npm run build --workspace=auth-service
 
 EXPOSE 3003
-
 CMD ["node", "dist/index.js"]

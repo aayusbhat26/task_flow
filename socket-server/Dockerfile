@@ -1,41 +1,38 @@
 FROM node:20-alpine
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl openssl-dev libc6-compat
+# Install OpenSSL for Prisma and build tools for native modules
+RUN apk add --no-cache openssl openssl-dev libc6-compat make gcc g++ python3
 
 WORKDIR /app
 
 # Copy package files
-COPY socket-server/package*.json ./
+COPY package.json ./package.json
+COPY socket-server/package*.json ./socket-server/
 
-# Copy root package.json to resolve "file:.." dependency
-COPY package.json /package.json
-
-# Remove postinstall script to prevent premature prisma generate
-RUN sed -i '/postinstall/d' package.json
-
-# Copy prisma schema from root
-COPY prisma ../prisma
+# Copy prisma folder into /app/prisma (IMPORTANT)
+COPY prisma ./prisma
 
 # Install dependencies
 RUN npm install --ignore-scripts --legacy-peer-deps
 
+# Rebuild bcrypt/native modules if any
+RUN npm rebuild bcrypt --build-from-source || true
+
 # Install prisma CLI explicitly to ensure it's available
 RUN npm install -g prisma@5.22.0
-
-# Copy source code
-COPY socket-server/server.ts ./
-COPY socket-server/tsconfig.json ./
 
 # Set environment variable to skip auto-install
 ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
 
 # Generate Prisma client using the global binary directly
-RUN prisma generate --schema=../prisma/schema.prisma
+RUN prisma generate --schema=./prisma/schema.prisma
 
-# Build TypeScript
-RUN npm run build
+# Copy socket-server source code to the workspace folder
+COPY socket-server/server.ts ./socket-server/
+COPY socket-server/tsconfig.json ./socket-server/
+
+# Build only socket-server workspace
+RUN npm run build --workspace=chat-socket-server
 
 EXPOSE 3002
-
-CMD ["node", "dist/server.js"]
+CMD ["node", "socket-server/dist/server.js"]

@@ -5,7 +5,17 @@ import { config } from "dotenv";
 
 config();
 const prisma = new PrismaClient();
-const httpServer = createServer();
+
+const httpServer = createServer((req, res) => {
+  if (req.url === "/healthz") {
+    res.writeHead(200);
+    res.end("OK");
+  } else {
+    // Handle other HTTP requests or return 404
+    res.writeHead(404);
+    res.end();
+  }
+});
 
 const io = new Server(httpServer, {
   cors: {

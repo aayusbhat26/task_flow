@@ -1,0 +1,39 @@
+FROM node:20-alpine
+
+# Install OpenSSL for Prisma and build tools for native modules (consistent with auth-service)
+RUN apk add --no-cache openssl openssl-dev libc6-compat make gcc g++ python3
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json ./package.json
+COPY socket-server/package*.json ./socket-server/
+
+# Copy prisma folder into /app/prisma
+COPY prisma ./prisma
+
+# Install dependencies
+RUN npm install --ignore-scripts --legacy-peer-deps
+
+# Rebuild bcrypt/native modules if any (good practice for alpine)
+# socket.io might use bufferutil/utf-8-validate
+RUN npm rebuild bcrypt --build-from-source || true
+
+# Install prisma CLI explicitly to ensure it's available
+RUN npm install -g prisma@5.22.0
+
+# Set environment variable to skip auto-install
+ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
+
+# Generate Prisma client using the global binary directly
+RUN prisma generate --schema=./prisma/schema.prisma
+
+# Copy socket-server source code to the workspace folder
+COPY socket-server/server.ts ./socket-server/
+COPY socket-server/tsconfig.json ./socket-server/
+
+# Build only socket-server workspace
+RUN npm run build --workspace=chat-socket-server
+
+EXPOSE 3002
+CMD ["node", "socket-server/dist/server.js"]
