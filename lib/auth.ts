@@ -72,7 +72,8 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const res = await fetch("http://localhost:3000/api/auth/login", {
+          const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+          const res = await fetch(`${baseUrl}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -106,7 +107,7 @@ export const authOptions: NextAuthOptions = {
             console.log("[NextAuth] User not found or missing password");
             throw new Error("User was not found, Please enter valid email");
           }
-          
+
           const passwordMatch = await bcrypt.compare(
             credentials.password,
             user.hashedPassword
@@ -150,7 +151,6 @@ export const authOptions: NextAuthOptions = {
         session.user.completedOnboarding = user.completedOnboarding;
         session.user.username = user.username;
       }
-     
 
       return session;
     },

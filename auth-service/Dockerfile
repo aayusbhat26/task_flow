@@ -8,6 +8,12 @@ WORKDIR /app
 # Copy package files
 COPY auth-service/package*.json ./
 
+# Copy root package.json to resolve "file:.." dependency
+COPY package.json /package.json
+
+# Remove postinstall script to prevent premature prisma generate
+RUN sed -i '/postinstall/d' package.json
+
 # Copy prisma schema from root
 COPY prisma ../prisma
 
