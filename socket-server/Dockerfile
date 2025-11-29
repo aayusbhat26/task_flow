@@ -27,6 +27,9 @@ RUN npm install -g prisma@5.22.0
 COPY socket-server/server.ts ./
 COPY socket-server/tsconfig.json ./
 
+# Set environment variable to skip auto-install
+ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
+
 # Generate Prisma client using the global binary directly
 RUN prisma generate --schema=../prisma/schema.prisma
 
