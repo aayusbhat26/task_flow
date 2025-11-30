@@ -19,12 +19,12 @@ const getApiBaseUrl = () => {
   if (process.env.NODE_ENV !== "production") {
     return "http://localhost:3000";
   }
-  
+
   // In production, use the current origin or NEXTAUTH_URL base
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  
+
   // Fallback to NEXTAUTH_URL for server-side calls
   return process.env.NEXTAUTH_URL || "https://task-flow-main.vercel.app";
 };
@@ -36,7 +36,7 @@ export const getWorkspace = async (workspace_id: string, userId: string) => {
     `${domain}/api/workspace/get/workspace_details/${workspace_id}?userId=${userId}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -52,7 +52,7 @@ export const getWorkspaces = async (userId: string) => {
     `${domain}/api/workspace/get/user_workspaces?userId=${userId}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -68,7 +68,7 @@ export const getUserAdminWorkspaces = async (userId: string) => {
     `${domain}/api/workspace/get/user_admin_workspaces?userId=${userId}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -87,7 +87,7 @@ export const getWorkspaceSettings = async (
     `${domain}/api/workspace/get/settings/${workspace_id}?userId=${userId}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -106,7 +106,7 @@ export const getUserWorkspaceRole = async (
     `${domain}/api/workspace/get/user_role?workspaceId=${workspace_id}&userId=${userId}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -154,7 +154,7 @@ export const getUserPomodoroSettings = async (userId: string) => {
     `${domain}/api/pomodoro/get_settings?userId=${userId}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -170,7 +170,7 @@ export const getInitialHomeRecentActivity = async (userId: string) => {
     `${domain}/api/home-page/get?userId=${userId}&page=${1}&take=${ACTIVITY_PER_PAGE}`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 
@@ -181,12 +181,15 @@ export const getInitialHomeRecentActivity = async (userId: string) => {
   return res.json() as Promise<HomeRecentActivity[]>;
 };
 
-export const getWorkspaceWithChat = async (workspace_id: string, userId: string) => {
+export const getWorkspaceWithChat = async (
+  workspace_id: string,
+  userId: string
+) => {
   const res = await fetch(
     `${domain}/api/workspace/get/workspace_details/${workspace_id}?userId=${userId}&includeChat=true`,
     {
       method: "GET",
-      cache: "no-store",
+      next: { revalidate: 60 },
     }
   );
 

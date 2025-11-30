@@ -2,14 +2,13 @@ import { AddTaskShortcut } from "@/components/addTaskShortCut/AddTaskShortcut";
 import { DashboardHeader } from "@/components/header/DashboardHeader";
 import { InviteUsers } from "@/components/inviteUsers/InviteUsers";
 import { LeaveWorkspace } from "@/components/workspaceMainPage/shortcuts/leaveWorkspace/LeaveWorkspace";
-import { MindMap } from "@/components/mindMaps/MindMap";
 import { PermissionIndicator } from "@/components/workspaceMainPage/shortcuts/permissionIndicator/Permissionindicator";
 import { FilterContainer } from "@/components/workspaceMainPage/filter/FilterContainer";
 import { ShortcutContainer } from "@/components/workspaceMainPage/shortcuts/ShortcutContainer";
 import {
-  getUserWorkspaceRole,
-  getWorkspace,
-} from "@/lib/api";
+  getUserWorkspaceRoleData,
+  getWorkspaceData,
+} from "@/lib/server-actions";
 import { checkIfUserCompletedOnboarding } from "@/lib/checkIfUserCompletedOnboarding";
 import { FilterByUsersAndTagsInWorkspaceProvider } from "@/context/FilterByUsersAndTagsInWorkspace";
 import { RecentActivityContainer } from "@/components/workspaceMainPage/recentActivity/RecentActivityContainer";
@@ -27,8 +26,8 @@ const Workspace = async ({ params: { workspace_id } }: Params) => {
   );
 
   const [workspace, userRole] = await Promise.all([
-    getWorkspace(workspace_id, session.user.id),
-    getUserWorkspaceRole(workspace_id, session.user.id),
+    getWorkspaceData(workspace_id, session.user.id),
+    getUserWorkspaceRoleData(workspace_id, session.user.id),
   ]);
 
   if (!workspace || !userRole) notFound();

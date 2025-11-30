@@ -1,15 +1,24 @@
 import { DashboardHeader } from "@/components/header/DashboardHeader";
 import { InviteUsers } from "@/components/inviteUsers/InviteUsers";
-import { MindMap } from "@/components/mindMaps/MindMap";
 import { MindMapPreviewCardWrapper } from "@/components/mindMaps/preview/MindMapPreviewCardWrapper";
 import { AutosaveIndicatorProvider } from "@/context/AutosaveIndicator";
 import { AutoSaveMindMapProvider } from "@/context/AutoSaveMindMap";
-import { getMindMap, getUserWorkspaceRole, getWorkspace } from "@/lib/api";
+import { getMindMapData, getUserWorkspaceRoleData, getWorkspaceData } from "@/lib/server-actions";
 import { changeCodeToEmoji } from "@/lib/changeCodeToEmoji";
 import { checkIfUserCompletedOnboarding } from "@/lib/checkIfUserCompletedOnboarding";
 import { LeaveWorkspace } from "@/components/workspaceMainPage/shortcuts/leaveWorkspace/LeaveWorkspace";
 import { AddTaskShortcut } from "@/components/addTaskShortCut/AddTaskShortcut";
 import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
+import { LoadingScreen } from "@/components/common/LoadingScreen";
+
+const MindMap = dynamic(
+  () => import("@/components/mindMaps/MindMap").then((mod) => mod.MindMap),
+  {
+    ssr: false,
+    loading: () => <LoadingScreen />,
+  }
+);
 
 interface Params {
   params: {
@@ -26,9 +35,9 @@ const MindMapPage = async ({
   );
 
   const [workspace, userRole, mindMap] = await Promise.all([
-    getWorkspace(workspace_id, session.user.id),
-    getUserWorkspaceRole(workspace_id, session.user.id),
-    getMindMap(mind_map_id, session.user.id),
+    getWorkspaceData(workspace_id, session.user.id),
+    getUserWorkspaceRoleData(workspace_id, session.user.id),
+    getMindMapData(mind_map_id, session.user.id),
   ]);
 
   if (!workspace || !userRole || !mindMap) notFound();

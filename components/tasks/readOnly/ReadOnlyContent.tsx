@@ -14,7 +14,16 @@ import { UserHoverInfo } from "@/components/common/UserHoverInfoCard";
 import { Separator } from "@/components/ui/separator";
 import { AssignedToTaskSelector } from "../assignToTask/AssignedToTaskSelector";
 import { TaskCompleteButton } from "../TaskCompleteButton";
-import { ReadOnlyContentRenderer } from "./ReadOnlyContentRenderer";
+import dynamic from "next/dynamic";
+import { LoadingScreen } from "@/components/common/LoadingScreen";
+
+const ReadOnlyContentRenderer = dynamic(
+  () => import("./ReadOnlyContentRenderer").then((mod) => mod.ReadOnlyContentRenderer),
+  {
+    ssr: false,
+    loading: () => <LoadingScreen />,
+  }
+);
 
 interface Props {
   task: ExtendedTask;
@@ -79,7 +88,7 @@ export const ReadOnlyContent = ({ task, isSavedByUser, userRole }: Props) => {
             </div>
           </div>
         </div>
-        
+
         {/* Task Content Section */}
         <div className="w-full">
           <ReadOnlyContentRenderer content={task.content as JSON} />

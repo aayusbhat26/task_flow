@@ -1,9 +1,8 @@
 import { AddTaskShortcut } from "@/components/addTaskShortCut/AddTaskShortcut";
 import { DashboardHeader } from "@/components/header/DashboardHeader";
 import { InviteUsers } from "@/components/inviteUsers/InviteUsers";
-import { MindMap } from "@/components/mindMaps/MindMap";
 import { WorkspaceTab } from "@/components/settings/workspace/WorkspaceTab";
-import { getWorkspaceSettings } from "@/lib/api";
+import { getWorkspaceData } from "@/lib/server-actions";
 import { checkIfUserCompletedOnboarding } from "@/lib/checkIfUserCompletedOnboarding";
 import { notFound } from "next/navigation";
 
@@ -17,7 +16,7 @@ const Workspace = async ({ params: { workspace_id } }: Params) => {
   const session = await checkIfUserCompletedOnboarding(
     `/dashboard/settings/workplace/${workspace_id}`
   );
-  const workspace = await getWorkspaceSettings(workspace_id, session.user.id);
+  const workspace = await getWorkspaceData(workspace_id, session.user.id);
   if (!workspace) notFound();
   const user = workspace.subscribers.find(
     (subscriber) => subscriber.user.id === session.user.id

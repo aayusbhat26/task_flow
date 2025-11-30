@@ -14,7 +14,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Emoji } from "@/components/tasks/editable/container/Emoji";
 import { TaskCalendar } from "@/components/tasks/editable/container/TaskCalendar";
 
-import { EditorTasks } from "../editor/Editor";
 import { TagSelector } from "../../../common/tag/TagSelector";
 import { LinkTag } from "../tag/LinkTag";
 import { useTranslations } from "next-intl";
@@ -23,6 +22,16 @@ import { useAutosaveIndicator } from "@/context/AutosaveIndicator";
 import axios from "axios";
 import { changeCodeToEmoji } from "@/lib/changeCodeToEmoji";
 import { useTags } from "@/hooks/useTags";
+import dynamic from "next/dynamic";
+import { LoadingScreen } from "@/components/common/LoadingScreen";
+
+const EditorTasks = dynamic(
+  () => import("../editor/Editor").then((mod) => mod.EditorTasks),
+  {
+    ssr: false,
+    loading: () => <LoadingScreen />,
+  }
+);
 
 interface Props {
   workspaceId: string;
@@ -141,8 +150,8 @@ export const TaskContainer = ({
 
   return (
     <Card>
-      <form 
-        id="task-form" 
+      <form
+        id="task-form"
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();

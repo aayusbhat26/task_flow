@@ -2,7 +2,7 @@ import { DashboardHeader } from "@/components/header/DashboardHeader";
 import { InviteUsers } from "@/components/inviteUsers/InviteUsers";
 import { TaskContainer } from "@/components/tasks/editable/container/TaskContainer";
 import { AutosaveIndicatorProvider } from "@/context/AutosaveIndicator";
-import { getTask, getUserWorkspaceRole, getWorkspace } from "@/lib/api";
+import { getTaskData, getUserWorkspaceRoleData, getWorkspaceData } from "@/lib/server-actions";
 import { checkIfUserCompletedOnboarding } from "@/lib/checkIfUserCompletedOnboarding";
 import { AddTaskShortcut } from "@/components/addTaskShortCut/AddTaskShortcut";
 import { notFound } from "next/navigation";
@@ -20,9 +20,9 @@ const EditTask = async ({ params: { workspace_id, task_id } }: Params) => {
   );
 
   const [workspace, userRole, task] = await Promise.all([
-    getWorkspace(workspace_id, session.user.id),
-    getUserWorkspaceRole(workspace_id, session.user.id),
-    getTask(task_id, session.user.id),
+    getWorkspaceData(workspace_id, session.user.id),
+    getUserWorkspaceRoleData(workspace_id, session.user.id),
+    getTaskData(task_id, session.user.id),
   ]);
 
   if (!workspace || !userRole || !task) notFound();

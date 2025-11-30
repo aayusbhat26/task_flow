@@ -23,6 +23,9 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      httpOptions: {
+        timeout: 10000,
+      },
       async profile(profile) {
         const username = generateFromEmail(profile.email, 5);
         return {
