@@ -1,9 +1,9 @@
 const https = require("https");
 
 const services = [
-  "https://taskflow-autth.onrender.com",
+  "https://taskflow-autth.onrender.com/health",
 
-  "https://taskflow-socket.onrender.com",
+  "https://taskflow-socket.onrender.com/healthz",
 ];
 
 function pingServices() {
