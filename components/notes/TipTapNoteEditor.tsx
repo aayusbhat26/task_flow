@@ -95,15 +95,14 @@ export function TipTapNoteEditor({
     }
   }, [note?.id, editor]);
 
-  // Handle title updates from other clients
+  // Sync title when switching to a different note (not during editing)
   useEffect(() => {
-    if (!note || !editor) return;
-
-    if (note.title && originalTitle.current !== note.title) {
-      setTitle(note.title);
-      originalTitle.current = note.title;
+    if (note) {
+      setTitle(note.title || 'Untitled');
+      originalTitle.current = note.title || 'Untitled';
     }
-  }, [note?.title, editor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note?.id]);
 
   const debouncedSave = useDebouncedCallback(async (noteId: string, htmlContent: string, currentTitle: string) => {
     try {
