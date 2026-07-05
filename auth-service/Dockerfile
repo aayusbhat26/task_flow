@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies
-RUN npm install --legacy-peer-deps
+RUN npm install --ignore-scripts --legacy-peer-deps
 
 # Rebuild bcrypt to ensure it matches the container architecture
 RUN npm rebuild bcrypt --build-from-source
@@ -37,7 +37,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm install --only=production --legacy-peer-deps
+RUN npm install --only=production --ignore-scripts --legacy-peer-deps
 
 # Copy compiled build output, generated prisma clients, and built native modules
 COPY --from=builder /app/dist ./dist

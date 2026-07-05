@@ -10,7 +10,7 @@ COPY socket-server/package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies (including devDependencies like typescript, prisma, and tsx for building)
-RUN npm install --legacy-peer-deps
+RUN npm install --ignore-scripts --legacy-peer-deps
 
 # Generate Prisma Client
 RUN npx prisma generate --schema=./prisma/schema.prisma
@@ -34,7 +34,7 @@ COPY socket-server/package*.json ./
 COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm install --only=production --legacy-peer-deps
+RUN npm install --only=production --ignore-scripts --legacy-peer-deps
 
 # Copy compiled build output and generated prisma clients
 COPY --from=builder /app/dist ./dist
