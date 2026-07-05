@@ -36,7 +36,7 @@ export const getWorkspace = async (workspace_id: string, userId: string) => {
     `${domain}/api/workspace/get/workspace_details/${workspace_id}?userId=${userId}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -52,7 +52,7 @@ export const getWorkspaces = async (userId: string) => {
     `${domain}/api/workspace/get/user_workspaces?userId=${userId}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -68,7 +68,7 @@ export const getUserAdminWorkspaces = async (userId: string) => {
     `${domain}/api/workspace/get/user_admin_workspaces?userId=${userId}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -87,7 +87,7 @@ export const getWorkspaceSettings = async (
     `${domain}/api/workspace/get/settings/${workspace_id}?userId=${userId}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -106,7 +106,7 @@ export const getUserWorkspaceRole = async (
     `${domain}/api/workspace/get/user_role?workspaceId=${workspace_id}&userId=${userId}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -154,7 +154,7 @@ export const getUserPomodoroSettings = async (userId: string) => {
     `${domain}/api/pomodoro/get_settings?userId=${userId}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -170,7 +170,7 @@ export const getInitialHomeRecentActivity = async (userId: string) => {
     `${domain}/api/home-page/get?userId=${userId}&page=${1}&take=${ACTIVITY_PER_PAGE}`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 
@@ -189,7 +189,7 @@ export const getWorkspaceWithChat = async (
     `${domain}/api/workspace/get/workspace_details/${workspace_id}?userId=${userId}&includeChat=true`,
     {
       method: "GET",
-      next: { revalidate: 60 },
+      cache: "no-store",
     }
   );
 

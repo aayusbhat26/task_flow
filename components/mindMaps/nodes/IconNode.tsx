@@ -27,7 +27,7 @@ export const IconNode = ({ data, id }: NodeProps<NodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const _nodeText = useRef<HTMLTextAreaElement>(null);
 
-  const { setNodes } = useReactFlow();
+  const setNodes = (data as any).setNodes || useReactFlow().setNodes;
   const { onSetStatus } = useAutosaveIndicator();
   const { onSave } = useAutoSaveMindMap();
   const { socket, isConnected, sendMindMapSync } = useSocket();
@@ -102,7 +102,8 @@ export const IconNode = ({ data, id }: NodeProps<NodeData>) => {
       isEditing={isEditing}
       onIsEdit={onIsEdit}
       onDelete={data.onDelete}
-    >
+    
+      setNodes={setNodes}>
       <div className="flex flex-col items-center justify-center gap-2 w-full p-2">
         <IconComponent size={40} className={data.color !== MindMapItemColors.DEFAULT ? "text-white" : "text-primary"} />
         <form

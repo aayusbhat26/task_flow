@@ -85,8 +85,8 @@ const MindMapPage = async ({
           >
             <MindMap
               initialInfo={mindMap}
-              workspaceId={"cm2xbvkzx0003vxqszrp0sxa0"}
-              canEdit={false}
+              workspaceId={workspace.id}
+              canEdit={canEdit}
               initialActiveTags={mindMap.tags}
             />
           </MindMapPreviewCardWrapper>

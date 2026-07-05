@@ -117,6 +117,8 @@ export const MindMap = ({
   const { 
     socket, 
     isConnected, 
+    joinWorkspace,
+    leaveWorkspace,
     sendMindMapCursor, 
     sendMindMapNodesChange, 
     sendMindMapEdgesChange,
@@ -127,6 +129,8 @@ export const MindMap = ({
   // Handle incoming socket events
   useEffect(() => {
     if (!socket || !isConnected) return;
+
+    joinWorkspace(workspaceId);
 
     const handleCursorMove = (data: any) => {
       if (data.user?.id === session?.user?.id) return; // ignore our own
@@ -172,6 +176,7 @@ export const MindMap = ({
     window.addEventListener('mindmap-local-save', handleLocalSave);
 
     return () => {
+      leaveWorkspace(workspaceId);
       socket.off("mindmap-cursor-move", handleCursorMove);
       socket.off("mindmap-nodes-change", handleNodesChange);
       socket.off("mindmap-edges-change", handleEdgesChange);
@@ -179,12 +184,22 @@ export const MindMap = ({
       socket.off("user-left", handleUserLeft);
       window.removeEventListener('mindmap-local-save', handleLocalSave);
     };
-  }, [socket, isConnected, session?.user?.id, sendMindMapSync, workspaceId]);
+  }, [socket, isConnected, session?.user?.id, sendMindMapSync, workspaceId, joinWorkspace, leaveWorkspace]);
 
   const debouncedMindMapInfo = useDebouncedCallback(() => {
     onSetStatus("pending");
     onSave();
   }, 3000);
+
+  const nodesWithSetNodes = useMemo(() => {
+    return nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        setNodes,
+      },
+    }));
+  }, [nodes]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -407,7 +422,7 @@ export const MindMap = ({
           onDrop={onDrop}
           onNodeDrag={onNodeDrag}
           onPaneMouseMove={onPaneMouseMove}
-          nodes={nodes}
+          nodes={nodesWithSetNodes}
           nodeTypes={memoizedNodeTypes}
           edges={edges}
           edgeTypes={edgeTypes}

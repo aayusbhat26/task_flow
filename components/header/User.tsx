@@ -154,6 +154,11 @@ export const User = ({ profileImage, username, email, name, surname }: Props) =>
                </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
+          <DropdownMenuItem className="cursor-pointer gap-2 px-3 py-2 text-yellow-500 font-medium hover:text-yellow-600">
+            <Link href={"/upgrade"} className="flex gap-2 items-center w-full">
+              <span className="text-base">⭐</span> Go Premium
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer gap-2 px-3 py-2">
             <Link href={"/dashboard/settings"} className="flex gap-2 items-center w-full">
               <Settings2 size={16} /> {t("SETTINGS")}

@@ -26,7 +26,7 @@ export const SquareNode = ({ data, id }: NodeProps<NodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const _nodeText = useRef<HTMLTextAreaElement>(null);
 
-  const { setNodes } = useReactFlow();
+  const setNodes = (data as any).setNodes || useReactFlow().setNodes;
   const { onSetStatus } = useAutosaveIndicator();
   const { onSave } = useAutoSaveMindMap();
 
@@ -96,7 +96,8 @@ export const SquareNode = ({ data, id }: NodeProps<NodeData>) => {
       isEditing={isEditing}
       onIsEdit={onIsEdit}
       onDelete={data.onDelete}
-    >
+    
+      setNodes={setNodes}>
       <div className="w-full py-1.5">
         {isEditing ? (
           <form id="node-text-form" onSubmit={form.handleSubmit(onSubmit)}>

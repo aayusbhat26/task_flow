@@ -35,6 +35,7 @@ interface Props {
   isEditing: boolean;
   onIsEdit: () => void;
   onDelete: () => void;
+  setNodes?: any;
 }
 
 const colors = [
@@ -63,12 +64,14 @@ export const NodeWrapper = ({
   isEditing,
   onIsEdit,
   onDelete,
+  setNodes: customSetNodes,
 }: Props) => {
   const [currColor, setCurrColor] = useState<MindMapItemColors | undefined>(
     color
   );
-  const { setNodes } = useReactFlow();
-  const { onSetStatus } = useAutosaveIndicator();
+  const { setNodes: reactFlowSetNodes } = useReactFlow();
+  const setNodes = customSetNodes || reactFlowSetNodes;
+  const onSetStatus = useAutosaveIndicator().onSetStatus;
   const { onSave } = useAutoSaveMindMap();
   const t = useTranslations("MIND_MAP.NODE");
 

@@ -392,6 +392,7 @@ export const SettingsForm = ({
           <Button
             disabled={isUpdating || isDefaultValue}
             type="button"
+            variant="outline"
             onClick={() => {
               resetSettings();
             }}

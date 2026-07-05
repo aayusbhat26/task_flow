@@ -22,7 +22,7 @@ type NodeData = {
 };
 
 export const DSANode = ({ data, id }: NodeProps<NodeData>) => {
-  const { setNodes } = useReactFlow();
+  const setNodes = (data as any).setNodes || useReactFlow().setNodes;
   const { onSetStatus } = useAutosaveIndicator();
   const { onSave } = useAutoSaveMindMap();
   
@@ -210,6 +210,7 @@ export const DSANode = ({ data, id }: NodeProps<NodeData>) => {
       isEditing={false}
       onIsEdit={() => {}}
       onDelete={data.onDelete}
+      setNodes={setNodes}
     >
       <div className="p-4 flex flex-col items-center justify-center cursor-default">
         {data.text && <div className="mb-2 font-semibold text-sm">{data.text}</div>}

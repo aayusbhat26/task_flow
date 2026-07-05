@@ -38,7 +38,26 @@ export function TypingTest({ workspaceId, currentUser }: { workspaceId: string; 
   const [gameState, setGameState] = useState<"lobby" | "countdown" | "playing" | "finished">("lobby");
   const [paragraph, setParagraph] = useState("");
   const [typedText, setTypedText] = useState("");
-  const [players, setPlayers] = useState<Map<string, PlayerState>>(new Map());
+  const [players, setPlayers] = useState<Map<string, PlayerState>>(() => {
+    const initial = new Map<string, PlayerState>();
+    initial.set(currentUser.id, { user: currentUser, progress: 0, wpm: 0, finished: false });
+    return initial;
+  });
+
+  useEffect(() => {
+    setPlayers(prev => {
+      const next = new Map(prev);
+      const existing = prev.get(currentUser.id);
+      next.set(currentUser.id, {
+        user: currentUser,
+        progress: existing?.progress || 0,
+        wpm: existing?.wpm || 0,
+        finished: existing?.finished || false,
+        finishTime: existing?.finishTime
+      });
+      return next;
+    });
+  }, [currentUser]);
   const [countdown, setCountdown] = useState(3);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [liveWpm, setLiveWpm] = useState(0);

@@ -44,6 +44,10 @@ export const PomodoContainer = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    setTimer({ minutes: workDuration, seconds: 0 });
+  }, [workDuration]);
+
   // Call the points API when a work session is completed
   const awardPomodoroPoints = useCallback(async (duration: number) => {
     try {

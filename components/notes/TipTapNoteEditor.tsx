@@ -18,10 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit3, Type, List as ListIcon, ListOrdered, Code, Code2, Quote, Undo, Redo, Heading1, Heading2, Heading3, Minus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import * as Y from 'yjs';
-import { WebrtcProvider } from 'y-webrtc';
-import Collaboration from '@tiptap/extension-collaboration';
-import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 
 const USER_COLORS = ['#f783ac', '#8ce99a', '#74c0fc', '#ffa94d', '#d0ebff', '#ffc9c9'];
 
@@ -54,15 +50,6 @@ export function TipTapNoteEditor({
   // Track original content to properly detect changes
   const originalTitle = useRef<string>(note?.title || 'Untitled');
 
-  const [yProvider] = useState(() => {
-    if (!note?.id) return null;
-    const ydoc = new Y.Doc();
-    const provider = new WebrtcProvider(`taskflow-note-${note.id}`, ydoc, {
-      signaling: ['wss://signaling.yjs.dev']
-    });
-    return { ydoc, provider };
-  });
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -85,30 +72,15 @@ export function TipTapNoteEditor({
         emptyNodeClass: 'before:text-muted-foreground',
         placeholder: 'Press / for commands or start typing...',
       }),
-      ...(yProvider ? [
-        Collaboration.configure({
-          document: yProvider.ydoc,
-        }),
-        CollaborationCursor.configure({
-          provider: yProvider.provider,
-          user: {
-            name: currentUser?.name || 'Anonymous',
-            color: USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)],
-          },
-        }),
-      ] : []),
     ],
+    content: note?.content || '',
     editorProps: {
       attributes: {
         class:
           'prose prose-sm sm:prose-base dark:prose-invert prose-headings:font-bold prose-a:text-primary focus:outline-none max-w-none min-h-[500px] pb-32',
       },
     },
-    onUpdate: ({ editor, transaction }) => {
-      // Ignore remote transactions (e.g. from Yjs synchronization) to prevent circular database saves
-      if (transaction.getMeta('y-sync$')) {
-        return;
-      }
+    onUpdate: ({ editor }) => {
       onSetStatus('unsaved');
       if (note?.id) {
         debouncedSave(note.id, editor.getHTML(), title);
@@ -116,54 +88,12 @@ export function TipTapNoteEditor({
     },
   });
 
-  // Cleanup WebRTC Provider
+  // Sync editor content when selected note changes
   useEffect(() => {
-    return () => {
-      if (yProvider) {
-        yProvider.provider.destroy();
-        yProvider.ydoc.destroy();
-      }
-    };
-  }, [yProvider]);
-
-  // Load initial content from database if the document is empty on sync
-  useEffect(() => {
-    if (!editor || !yProvider || !note) return;
-
-    let isSubscribed = true;
-
-    const handleSync = (syncState: { synced: boolean } | boolean) => {
-      const isSynced = typeof syncState === "boolean" ? syncState : syncState.synced;
-      if (!isSubscribed) return;
-      if (isSynced) {
-        // Wait a small moment to ensure that active peer discovery finishes
-        setTimeout(() => {
-          if (!isSubscribed) return;
-          const xmlFragment = yProvider.ydoc.getXmlFragment('default');
-          const connectedPeersCount = yProvider.provider.awareness.getStates().size;
-          
-          // If we are the only user in the room (connectedPeersCount <= 1)
-          // and the Yjs document is empty, initialize it with the database content
-          if (connectedPeersCount <= 1 && xmlFragment.length === 0 && note.content) {
-            editor.commands.setContent(note.content);
-          }
-        }, 500);
-      }
-    };
-
-    yProvider.provider.on('synced', handleSync);
-    
-    // In case the provider was already synced
-    // @ts-ignore
-    if (yProvider.provider.synced) {
-      handleSync(true);
+    if (editor && note && editor.getHTML() !== note.content) {
+      editor.commands.setContent(note.content || '');
     }
-
-    return () => {
-      isSubscribed = false;
-      yProvider.provider.off('synced', handleSync);
-    };
-  }, [editor, yProvider, note?.id]);
+  }, [note?.id, editor]);
 
   // Handle title updates from other clients
   useEffect(() => {

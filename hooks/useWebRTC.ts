@@ -147,8 +147,15 @@ export function useWebRTC(socket: Socket | null, roomKey: string, currentUserId:
   }, [createPC, currentUserId, roomKey]);
 
   // ---- Step 1: Acquire local media ----
+  // ---- Step 1: Acquire local media ----
   useEffect(() => {
     let cancelled = false;
+
+    // Initialize as a blank media stream immediately so localStream is never null
+    const blankStream = new MediaStream();
+    localStreamRef.current = blankStream;
+    setLocalStream(blankStream);
+    console.log("[WebRTC] ⚙️ Initialized empty local stream");
 
     const init = async () => {
       try {
@@ -157,13 +164,15 @@ export function useWebRTC(socket: Socket | null, roomKey: string, currentUserId:
 
         // Start muted
         stream.getAudioTracks().forEach(t => { t.enabled = false; });
+        stream.getAudioTracks().forEach(t => blankStream.addTrack(t));
         
-        const newStream = new MediaStream(stream.getTracks());
-        localStreamRef.current = newStream;
-        setLocalStream(newStream);
-        console.log("[WebRTC] ✅ Local media acquired (audio only)");
+        // Update stream reference to trigger re-renders
+        const updatedStream = new MediaStream(blankStream.getTracks());
+        localStreamRef.current = updatedStream;
+        setLocalStream(updatedStream);
+        console.log("[WebRTC] ✅ Local audio track acquired and appended");
       } catch (err) {
-        console.error("[WebRTC] ❌ No media devices available:", err);
+        console.warn("[WebRTC] ⚠️ Microphone not available or access denied:", err);
       }
     };
 
