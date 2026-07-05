@@ -14,8 +14,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "dotenv": "^17.2.1",
-    "socket.io": "^4.7.5",
-    "taskflow": "file:.."
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",

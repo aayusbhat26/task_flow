@@ -1,40 +1,46 @@
-FROM node:20-alpine
+# Multi-stage production Dockerfile for Socket Microservice
+FROM node:20-alpine AS builder
 
-# Install OpenSSL for Prisma and build tools for native modules (consistent with auth-service)
-RUN apk add --no-cache openssl openssl-dev libc6-compat make gcc g++ python3
+RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./package.json
-COPY socket-server/package*.json ./socket-server/
+# Copy package files and prisma schema
+COPY socket-server/package*.json ./
+COPY prisma ./prisma/
 
-# Copy prisma folder into /app/prisma
-COPY prisma ./prisma
+# Install all dependencies (including devDependencies like typescript, prisma, and tsx for building)
+RUN npm install --legacy-peer-deps
 
-# Install dependencies
-RUN npm install --ignore-scripts --legacy-peer-deps
+# Generate Prisma Client
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
-# Rebuild bcrypt/native modules if any (good practice for alpine)
-# socket.io might use bufferutil/utf-8-validate
-RUN npm rebuild bcrypt --build-from-source || true
+# Copy source code and tsconfig
+COPY socket-server/server.ts ./
+COPY socket-server/tsconfig.json ./
 
-# Install prisma CLI explicitly to ensure it's available
-RUN npm install -g prisma@5.22.0
+# Build TypeScript to Javascript
+RUN npm run build
 
-# Set environment variable to skip auto-install
-ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
+# Production Runner Stage
+FROM node:20-alpine AS runner
 
-# Generate Prisma client using the global binary directly
-RUN prisma generate --schema=./prisma/schema.prisma
+RUN apk add --no-cache openssl libc6-compat
 
-# Copy socket-server source code to the workspace folder
-COPY socket-server/server.ts ./socket-server/
-COPY socket-server/tsconfig.json ./socket-server/
+WORKDIR /app
 
-# Build only socket-server workspace
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build --workspace=chat-socket-server
+# Copy package files and prisma schema
+COPY socket-server/package*.json ./
+COPY prisma ./prisma/
+
+# Install production dependencies only
+RUN npm install --only=production --legacy-peer-deps
+
+# Copy compiled build output and generated prisma clients
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 EXPOSE 3002
-CMD ["node", "socket-server/dist/server.js"]
+
+CMD ["node", "dist/server.js"]

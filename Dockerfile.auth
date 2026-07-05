@@ -1,41 +1,50 @@
-FROM node:20-alpine
+# Multi-stage production Dockerfile for Auth Microservice
+FROM node:20-alpine AS builder
+
+RUN apk add --no-cache openssl libc6-compat make gcc g++ python3
+
+WORKDIR /app
+
+# Copy package files and prisma schema
+COPY auth-service/package*.json ./
+COPY prisma ./prisma/
+
+# Install all dependencies (including devDependencies like typescript, prisma, and tsx for building)
+RUN npm install --legacy-peer-deps
+
+# Rebuild bcrypt to ensure it matches the container architecture
+RUN npm rebuild bcrypt --build-from-source
+
+# Generate Prisma Client
+RUN npx prisma generate --schema=./prisma/schema.prisma
+
+# Copy source code and tsconfig
+COPY auth-service/src ./src
+COPY auth-service/tsconfig.json ./
+
+# Build TypeScript to Javascript
+RUN npm run build
+
+# Production Runner Stage
+FROM node:20-alpine AS runner
 
 RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
-# Copy root and workspace package.json
-COPY package.json ./package.json
-COPY auth-service/package*.json ./auth-service/
+# Copy package files and prisma schema
+COPY auth-service/package*.json ./
+COPY prisma ./prisma/
 
-# Copy prisma folder into /app/prisma (IMPORTANT)
-COPY prisma ./prisma
+# Install production dependencies only
+RUN npm install --only=production --legacy-peer-deps
 
-# Install dependencies
-RUN npm install --ignore-scripts --legacy-peer-deps
-
-# Install build tools for native modules (bcrypt)
-RUN apk add --no-cache make gcc g++ python3
-
-# Rebuild bcrypt to ensure it matches the container architecture
-RUN npm rebuild bcrypt --build-from-source
-
-# Install prisma CLI explicitly to ensure it's available
-RUN npm install -g prisma@5.22.0
-
-# Set environment variable to skip auto-install
-ENV PRISMA_SKIP_AUTO_INSTALL_BINARY=true
-
-# Generate Prisma client using the global binary directly
-RUN prisma generate --schema=./prisma/schema.prisma
-
-# Copy auth-service source code
-COPY auth-service/src ./src
-COPY auth-service/tsconfig.json ./
-
-# Build only auth-service workspace
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build --workspace=auth-service
+# Copy compiled build output, generated prisma clients, and built native modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/bcrypt ./node_modules/bcrypt
 
 EXPOSE 3003
+
 CMD ["node", "dist/index.js"]

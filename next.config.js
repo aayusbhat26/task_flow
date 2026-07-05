@@ -3,7 +3,7 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  productionBrowserSourceMaps: true, // ✅ Enables readable error stack traces in production
+  productionBrowserSourceMaps: false, // ❌ Disabled to reduce build memory usage and speed up builds
 
   experimental: {
     serverComponentsExternalPackages: ["next-auth"],
