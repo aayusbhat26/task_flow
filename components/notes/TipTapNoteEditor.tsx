@@ -47,6 +47,9 @@ export function TipTapNoteEditor({
   // Use state for title (for controlled input rendering)
   const [title, setTitle] = useState(note?.title || 'Untitled');
 
+  // Track the current note ID internally to manage switching notes without unmounting
+  const [currentNoteId, setCurrentNoteId] = useState(note?.id);
+
   // Use a ref to always have the latest title available in callbacks.
   // This avoids the stale closure problem where editor.onUpdate captures an old title.
   const titleRef = useRef(title);
@@ -111,11 +114,27 @@ export function TipTapNoteEditor({
     },
   });
 
-  // No useEffects that sync title or content from the note prop.
-  // Since NotesApp renders <TipTapNoteEditor key={selectedNote.id} />,
-  // switching notes causes a full remount with fresh initial state.
-  // During editing of the SAME note, the local state (title, editor content)
-  // is the single source of truth — never overwritten by parent re-renders.
+  // Synchronize internal state when the active note changes.
+  // We explicitly check if it's a temp ID replacement so we don't clear user modifications.
+  useEffect(() => {
+    if (!note) return;
+
+    const isTempReplacement = currentNoteId?.startsWith('temp-') && !note.id.startsWith('temp-');
+    
+    if (note.id !== currentNoteId) {
+      setCurrentNoteId(note.id);
+      
+      // Only reset local editor and title state if we are switching to a completely different note,
+      // NOT when a temp note is converted to a real database note.
+      if (!isTempReplacement) {
+        setTitle(note.title || 'Untitled');
+        titleRef.current = note.title || 'Untitled';
+        if (editor) {
+          editor.commands.setContent(note.content || '');
+        }
+      }
+    }
+  }, [note, editor, currentNoteId]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;

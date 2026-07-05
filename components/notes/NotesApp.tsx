@@ -645,7 +645,6 @@ export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppPr
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {selectedNote ? (
               <TipTapNoteEditor
-              key={selectedNote.id}
               note={selectedNote}
               onNoteUpdate={handleNoteUpdate}
               onNoteDelete={handleNoteDelete}
