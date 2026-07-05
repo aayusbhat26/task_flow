@@ -14,7 +14,7 @@ if (existsSync(".env")) {
 const prisma = new PrismaClient();
 
 const httpServer = createServer((req, res) => {
-  if (req.url === "/healthz") {
+  if (req.url === "/health" || req.url === "/healthz") {
     res.writeHead(200);
     res.end("OK");
   } else {
