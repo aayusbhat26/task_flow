@@ -159,7 +159,6 @@ docker-compose.override.yml
 .dockerignore
 
 # Local configuration files
-.npmrc
 .yarnrc
 .yarnrc.yml
 
