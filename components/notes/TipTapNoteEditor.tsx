@@ -19,8 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Edit3, Type, List as ListIcon, ListOrdered, Code, Code2, Quote, Undo, Redo, Heading1, Heading2, Heading3, Minus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
-const USER_COLORS = ['#f783ac', '#8ce99a', '#74c0fc', '#ffa94d', '#d0ebff', '#ffc9c9'];
-
 interface Note {
   id: string;
   title?: string | null;
@@ -45,10 +43,34 @@ export function TipTapNoteEditor({
 }: TipTapNoteEditorProps) {
   const { toast } = useToast();
   const { onSetStatus, status } = useAutosaveIndicator();
+
+  // Use state for title (for controlled input rendering)
   const [title, setTitle] = useState(note?.title || 'Untitled');
-  
-  // Track original content to properly detect changes
-  const originalTitle = useRef<string>(note?.title || 'Untitled');
+
+  // Use a ref to always have the latest title available in callbacks.
+  // This avoids the stale closure problem where editor.onUpdate captures an old title.
+  const titleRef = useRef(title);
+  titleRef.current = title;
+
+  const debouncedSave = useDebouncedCallback(async (noteId: string, htmlContent: string, currentTitle: string) => {
+    try {
+      onSetStatus('pending');
+
+      await onNoteUpdate(noteId, {
+        title: currentTitle,
+        content: htmlContent,
+      });
+
+      onSetStatus('saved');
+    } catch (error) {
+      onSetStatus('unsaved');
+      toast({
+        title: 'Error',
+        description: 'Failed to save changes. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, 1500);
 
   const editor = useEditor({
     extensions: [
@@ -83,54 +105,22 @@ export function TipTapNoteEditor({
     onUpdate: ({ editor }) => {
       onSetStatus('unsaved');
       if (note?.id) {
-        debouncedSave(note.id, editor.getHTML(), title);
+        // Always read from titleRef to get the latest title, not a stale closure value
+        debouncedSave(note.id, editor.getHTML(), titleRef.current);
       }
     },
   });
 
-  // Sync editor content when selected note changes
-  useEffect(() => {
-    if (editor && note && editor.getHTML() !== note.content) {
-      editor.commands.setContent(note.content || '');
-    }
-  }, [note?.id, editor]);
-
-  // Sync title when switching to a different note (not during editing)
-  useEffect(() => {
-    if (note) {
-      setTitle(note.title || 'Untitled');
-      originalTitle.current = note.title || 'Untitled';
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note?.id]);
-
-  const debouncedSave = useDebouncedCallback(async (noteId: string, htmlContent: string, currentTitle: string) => {
-    try {
-      onSetStatus('pending');
-      
-      await onNoteUpdate(noteId, {
-        title: currentTitle,
-        content: htmlContent,
-      });
-
-      // Only update originalTitle if we're still on the same note
-      if (note?.id === noteId) {
-        originalTitle.current = currentTitle;
-      }
-      onSetStatus('saved');
-    } catch (error) {
-      onSetStatus('unsaved');
-      toast({
-        title: 'Error',
-        description: 'Failed to save changes. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }, 1500);
+  // No useEffects that sync title or content from the note prop.
+  // Since NotesApp renders <TipTapNoteEditor key={selectedNote.id} />,
+  // switching notes causes a full remount with fresh initial state.
+  // During editing of the SAME note, the local state (title, editor content)
+  // is the single source of truth — never overwritten by parent re-renders.
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
+    titleRef.current = newTitle;
     onSetStatus('unsaved');
     if (editor && note?.id) {
       debouncedSave(note.id, editor.getHTML(), newTitle);

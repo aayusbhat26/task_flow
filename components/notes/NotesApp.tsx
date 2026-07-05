@@ -129,11 +129,15 @@ export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppPr
     const onNoteUpdated = (updatedNote: Note) => {
       setAllNotes(prev => prev.map(note => note.id === updatedNote.id ? updatedNote : note));
 
-      // Update selected note if it's the one being updated
+      // Only update selectedNote metadata, preserve local title/content to avoid
+      // overwriting what the user is currently typing in the editor
       setSelectedNote(prev => {
         if (prev?.id === updatedNote.id) {
-          // Preserve local state if needed, but for now just update content
-          return updatedNote;
+          return {
+            ...updatedNote,
+            title: prev.title,
+            content: prev.content,
+          };
         }
         return prev;
       });
@@ -169,9 +173,20 @@ export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppPr
     };
   }, [socket, groupId, toast]);
 
-  // Update notes when prop changes
+  // Sync notes from server props — only add new notes, don't wipe optimistic state
   useEffect(() => {
-    setAllNotes(notes);
+    setAllNotes(prev => {
+      // Merge: keep optimistic/temp notes, update existing notes from server,
+      // and add any new notes from the server that we don't have locally
+      const localIds = new Set(prev.map(n => n.id));
+      const serverIds = new Set(notes.map(n => n.id));
+
+      // Keep temp notes (optimistic creates) that haven't been replaced yet
+      const tempNotes = prev.filter(n => n.id.startsWith('temp-'));
+
+      // Use server data for everything else, preserving order
+      return [...tempNotes, ...notes];
+    });
   }, [notes]);
 
   // Stable handleNoteSelect function
@@ -252,6 +267,11 @@ export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppPr
     lastSelectedId.current = selectedNote?.id;
 
     const performAutoSelection = async () => {
+      // Don't interfere while a temp note is being replaced by a real server note
+      if (selectedNote?.id?.startsWith('temp-')) {
+        return;
+      }
+
       // Auto-select first note if none selected
       if (allNotes.length > 0 && !selectedNote) {
         hasAttemptedAutoSelect.current = true;
@@ -518,13 +538,25 @@ export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppPr
 
       const updatedNote = await response.json();
 
-      // Update with server response
+      // Update allNotes list with server response (for sidebar display)
       setAllNotes(prev =>
         prev.map(note => note.id === noteId ? updatedNote : note)
       );
 
-      setSelectedNote(prev => prev?.id === noteId ? updatedNote : prev);
-      noteContentCache.set(noteId, updatedNote);
+      // For the active selectedNote, only merge server metadata (updatedAt, etc.)
+      // without overwriting title/content which the user may still be editing
+      setSelectedNote(prev => {
+        if (prev?.id === noteId) {
+          const merged = {
+            ...updatedNote,
+            title: prev.title,
+            content: prev.content,
+          };
+          noteContentCache.set(noteId, merged);
+          return merged;
+        }
+        return prev;
+      });
 
       if (groupId) {
         sendNoteUpdated(groupId, updatedNote);
