@@ -18,6 +18,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
       httpOptions: { timeout: 10000 },
       async profile(profile) {
         const username = generateFromEmail(profile.email, 5);
@@ -39,6 +40,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
       // GitHub now sends RFC 9207 `iss` on the callback; openid-client
       // rejects it unless the provider declares the matching issuer.
       issuer: "https://github.com/login/oauth",
