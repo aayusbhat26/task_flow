@@ -21,14 +21,13 @@ RUN npx prisma generate
 RUN npm run build:direct
 
 FROM node:20-alpine AS auth-builder
-RUN apk add --no-cache openssl libc6-compat ca-certificates make gcc g++ python3
+RUN apk add --no-cache openssl libc6-compat ca-certificates
 WORKDIR /app
 # Keep build stages sequential on Render's memory-limited builder.
 COPY --from=web-builder /app/package.json /tmp/web-build-complete
 COPY auth-service/package.json auth-service/package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci --ignore-scripts --legacy-peer-deps
-RUN npm rebuild bcrypt --build-from-source
 RUN npx prisma generate --schema=./prisma/schema.prisma
 COPY auth-service/src ./src
 COPY auth-service/tsconfig.json ./

@@ -1,7 +1,7 @@
 # Multi-stage production Dockerfile for Auth Microservice
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache openssl libc6-compat make gcc g++ python3
+RUN apk add --no-cache openssl libc6-compat ca-certificates
 
 WORKDIR /app
 
@@ -9,11 +9,8 @@ WORKDIR /app
 COPY auth-service/package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including devDependencies like typescript, prisma, and tsx for building)
-RUN npm install --ignore-scripts --legacy-peer-deps
-
-# Rebuild bcrypt to ensure it matches the container architecture
-RUN npm rebuild bcrypt --build-from-source
+# Install all dependencies (including devDependencies like typescript and prisma for building)
+RUN npm ci --ignore-scripts --legacy-peer-deps
 
 # Generate Prisma Client
 RUN npx prisma generate --schema=./prisma/schema.prisma
@@ -28,7 +25,7 @@ RUN npm run build
 # Production Runner Stage
 FROM node:20-alpine AS runner
 
-RUN apk add --no-cache openssl libc6-compat
+RUN apk add --no-cache openssl libc6-compat ca-certificates
 
 WORKDIR /app
 
@@ -37,13 +34,12 @@ COPY auth-service/package*.json ./
 COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm install --only=production --ignore-scripts --legacy-peer-deps
+RUN npm ci --omit=dev --ignore-scripts --legacy-peer-deps
 
-# Copy compiled build output, generated prisma clients, and built native modules
+# Copy compiled build output and generated Prisma clients
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
-COPY --from=builder /app/node_modules/bcrypt ./node_modules/bcrypt
 
 EXPOSE 3003
 
