@@ -39,6 +39,9 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     GithubProvider({
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      // GitHub now sends RFC 9207 `iss` on the callback; openid-client
+      // rejects it unless the provider declares the matching issuer.
+      issuer: "https://github.com/login/oauth",
       async profile(profile) {
         const email =
           typeof profile.email === "string" && profile.email.length > 0
