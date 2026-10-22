@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
           questionCompletionSound: questionCompletionSound as CompletionSoundEffect,
           soundVolume: soundVolume / 100,
           soundsEnabled,
+          showDSA: true,
         },
       });
     } else {

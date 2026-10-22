@@ -141,6 +141,13 @@ TaskFlow uses a **microservices architecture** for better scalability and mainta
    # File Upload
    UPLOADTHING_TOKEN="your-uploadthing-token"
 
+   # Billing (the built-in test gateway moves no money)
+   BILLING_ALLOW_TEST_PAYMENTS="true"
+   RAZORPAY_KEY_ID=""
+   RAZORPAY_KEY_SECRET=""
+   NEXT_PUBLIC_RAZORPAY_KEY_ID=""
+   RAZORPAY_WEBHOOK_SECRET=""
+
    # Optional: Supabase
    NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
@@ -322,7 +329,6 @@ Built for teams with advanced collaboration features.
 - **Offline Support**: Work offline, sync when reconnected
 
 ### 💬 Chat System
-
 Integrated messaging for seamless team communication.
 
 #### Features:
@@ -333,6 +339,30 @@ Integrated messaging for seamless team communication.
 - **Message History**: Search and browse past messages
 - **Notifications**: Desktop and in-app notifications
 - **User Status**: Online/offline indicators
+
+### 💳 Plans, Checkout and Billing
+
+TaskFlow plans are **prepaid**: a purchase unlocks the plan until a fixed date
+and never charges automatically. Users can extend the same plan from the
+upgrade page, and the added period stacks onto the time that remains.
+
+- **Built-in TaskFlow Pay gateway (local/test)** – enabled with
+  `BILLING_ALLOW_TEST_PAYMENTS="true"`. It collects no payment details and
+  moves no money, but exercises the complete order lifecycle and activates the
+  plan immediately. A prominent "Test mode" badge is shown at checkout.
+- **Razorpay (live)** – set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+  `NEXT_PUBLIC_RAZORPAY_KEY_ID` and `RAZORPAY_WEBHOOK_SECRET`, then set
+  `BILLING_ALLOW_TEST_PAYMENTS="false"`. Checkout uses Razorpay Orders and the
+  signature is verified server-side before the plan is granted. Register the
+  webhook `https://your-domain/api/webhooks/razorpay` for `payment.captured` and
+  `order.paid`; the webhook verifies `x-razorpay-signature`, checks the amount
+  and activates the plan even if the browser closes before verification.
+- **Ledger** – every attempt is stored in the `BillingOrder` table with amount,
+  interval, provider, receipt and payment state. Paid plans store
+  `planStartedAt` / `planExpiresAt` on the user.
+- **Expiry** – an expired plan is treated as Free by theme gating, the mind-map
+  limit and the session. Billing screens also reconcile the stored plan back to
+  Free the next time they load.
 
 ### 📅 Calendar Integration
 
@@ -450,6 +480,36 @@ taskflow/
 - **Email/Password**: Traditional signup with bcrypt hashing
 - **Google OAuth**: Sign in with Google account
 - **GitHub OAuth**: Sign in with GitHub account
+
+New OAuth users are sent to the dashboard, which redirects them into onboarding until they have a workspace.
+
+### Enabling Google and GitHub sign-in
+
+Set `NEXTAUTH_URL` to the exact origin you use locally or in production, then create the providers:
+
+**Google**
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create (or select) a project.
+2. Configure the OAuth consent screen. For local testing, choose **External** / **Testing** and add your Google account as a test user.
+3. Go to **APIs & Services → Credentials → Create credentials → OAuth client ID → Web application**.
+4. Add an authorized JavaScript origin: `http://localhost:3005` (or your domain).
+5. Add an authorized redirect URI: `http://localhost:3005/api/auth/callback/google`.
+6. Copy the client ID and client secret into `.env`:
+   ```env
+   GOOGLE_CLIENT_ID="..."
+   GOOGLE_CLIENT_SECRET="..."
+   ```
+
+**GitHub**
+1. Open [GitHub Developer Settings → OAuth Apps](https://github.com/settings/developers) and click **New OAuth App**.
+2. Set the homepage URL to `http://localhost:3005` (or your domain).
+3. Set the authorization callback URL to `http://localhost:3005/api/auth/callback/github`.
+4. Generate a client secret and add both values to `.env`:
+   ```env
+   GITHUB_CLIENT_ID="..."
+   GITHUB_CLIENT_SECRET="..."
+   ```
+
+Restart the app after changing `.env`. Both buttons stay visible on the auth screens; a provider shows **Setup needed** until its pair of variables is present.
 
 ### Security Features
 - **JWT Tokens**: Secure session management

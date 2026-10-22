@@ -16,7 +16,7 @@ const Pomodoro = async () => {
       <DashboardHeader>
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <main className="flex flex-col gap-2 h-full items-center">
+      <main className="min-h-full">
         <PomodoContainer pomodoroSettings={pomodoroSettings} />
       </main>
     </>

@@ -145,7 +145,7 @@ export function GroupMembersSettings({
                           onCheckedChange={() => handleToggleUser(user.id)}
                         />
                         <Avatar className="w-8 h-8">
-                          <AvatarImage src={user.image || ''} alt={user.name || ''} />
+                          <AvatarImage src={user.image || undefined} alt={user.name || ''} />
                           <AvatarFallback className={cn("text-primary-foreground font-semibold", getRandomColor(user.id))}>
                             {user.name?.charAt(0) || 'U'}
                           </AvatarFallback>
@@ -193,7 +193,7 @@ export function GroupMembersSettings({
               className="flex items-center p-4 bg-card border border-border rounded-lg shadow-sm"
             >
               <Avatar className="w-10 h-10 mr-4">
-                <AvatarImage src={member.image || ''} alt={member.name || ''} />
+                <AvatarImage src={member.image || undefined} alt={member.name || ''} />
                 <AvatarFallback className={cn("text-primary-foreground font-semibold", getRandomColor(member.id))}>
                   {member.name?.charAt(0) || 'U'}
                 </AvatarFallback>

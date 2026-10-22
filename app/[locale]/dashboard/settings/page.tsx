@@ -24,21 +24,15 @@ const Settings = async () => {
       <DashboardHeader>
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <main>
-        <Heading />
-        <AccountInfo session={session} showDSA={userSettings?.showDSA ?? true} />
-
-        <div className="p-4 sm:p-6">
-          <Separator />
+      <main className="min-h-full">
+        <div className="mx-auto w-full max-w-[900px] px-5 py-8 sm:px-8">
+          <Heading />
+          <AccountInfo
+            session={session}
+            showDSA={userSettings?.showDSA ?? true}
+          />
+          <DeleteAccount userEmail={session.user.email!} />
         </div>
-
-
-
-        <div className="p-4 sm:p-6">
-          <Separator />
-        </div>
-
-        <DeleteAccount userEmail={session.user.email!} />
       </main>
     </>
   );

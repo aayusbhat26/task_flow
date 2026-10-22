@@ -1,25 +1,10 @@
-import { Suspense } from 'react';
-import { SolvedQuestionsContainer } from '../../../../components/solved-questions/SolvedQuestionsContainer';
-import { checkIfUserCompletedOnboarding } from '@/lib/checkIfUserCompletedOnboarding';
-import { db } from '@/lib/db';
+import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { checkIfUserCompletedOnboarding } from "@/lib/checkIfUserCompletedOnboarding";
 
 export default async function SolvedQuestionsPage() {
-  const session = await checkIfUserCompletedOnboarding("/dashboard/solved-questions");
+  await checkIfUserCompletedOnboarding("/dashboard/solved-questions");
+  const locale = await getLocale();
 
-
-
-  return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Solved Questions</h1>
-        <p className="text-muted-foreground">
-          View all your solved problems from Codeforces, organized by topics
-        </p>
-      </div>
-      
-      <Suspense fallback={<div>Loading solved questions...</div>}>
-        <SolvedQuestionsContainer />
-      </Suspense>
-    </div>
-  );
+  redirect(`/${locale}/dsa`);
 }

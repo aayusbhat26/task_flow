@@ -11,8 +11,8 @@ export const changePasswordSchema = z
     message: "SCHEMA.PASSWORD_NOT_THE_SAME",
     path: ["repeat_password"],
   })
-  .refine((data) => data.new_password === data.current_password, {
-    message: "SCHEMA.PASSWORD_NOT_THE_SAME",
+  .refine((data) => data.new_password !== data.current_password, {
+    message: "SCHEMA.PASSWORD_SAME_AS_CURRENT",
     path: ["new_password"],
   });
 

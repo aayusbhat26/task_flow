@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils";
 import { CalendarItem } from "@/types/extended";
 import dayjs, { Dayjs } from "dayjs";
-import { CalendarTask } from "./CalendarTask";
-import { CalendarTasks } from "./CalendarTasks";
 import isSameOArfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { CalendarTasks } from "./CalendarTasks";
 dayjs.extend(isSameOArfter);
 dayjs.extend(isSameOrBefore);
 
@@ -18,38 +17,37 @@ interface Props {
 
 export const Day = ({ day, monthIndex, calendarItems }: Props) => {
   const isPreviousMonth = day.month() !== monthIndex;
-  const [tasks, setTasks] = useState<CalendarItem[]>([]);
+  const isToday = day.format("DD-MM-YY") === dayjs().format("DD-MM-YY");
 
-  useEffect(() => {
-    const filterTasks = calendarItems.filter((dayInfo, i) => {
-      const startDate = dayjs(dayInfo.taskDate?.from);
-      const endDate = dayInfo.taskDate?.to ? dayjs(dayInfo.taskDate?.to) : null;
+  const tasks = useMemo(
+    () =>
+      calendarItems.filter((dayInfo) => {
+        if (!dayInfo.taskDate?.from) return false;
+        const startDay = dayjs(dayInfo.taskDate.from).startOf("day");
+        const endDay = dayInfo.taskDate.to
+          ? dayjs(dayInfo.taskDate.to).startOf("day")
+          : startDay;
+        const currentDay = day.startOf("day");
+        return currentDay.isSameOrAfter(startDay) && currentDay.isSameOrBefore(endDay);
+      }),
+    [day, calendarItems]
+  );
 
-      if (startDate.isSame(day) && !endDate) return dayInfo;
-      else if (day.isSameOrAfter(startDate) && day.isSameOrBefore(endDate)) {
-        return dayInfo;
-      }
-    });
-
-    setTasks(filterTasks);
-  }, [day, calendarItems]);
   return (
     <div
       className={cn(
-        `border border-border flex flex-col  transition-opacity duration-200 bg-background py-1 px-1.5 ${
-          day.format("ddd") === "Sat" || day.format("ddd") === "Sun"
-            ? "bg-accent dark:bg-popover/50"
-            : ""
-        } ${isPreviousMonth ? "opacity-50 dark:opacity-25" : ""}`
+        "flex min-h-[88px] flex-col border-b border-r border-border p-1.5 sm:min-h-[118px] sm:p-2",
+        isPreviousMonth ? "bg-muted/20 text-muted-foreground/60" : "bg-background"
       )}
     >
-      <div className="flex flex-col items-end mb-2">
+      <div className="mb-1 flex items-center justify-between">
         <p
-          className={`text-sm p-1 mt-1 text-center ${
-            day.format("DD-MM-YY") === dayjs().format("DD-MM-YY")
-              ? "transition-colors duration-200 bg-primary text-white w-7 rounded-full"
-              : ""
-          }`}
+          className={cn(
+            "flex h-6 w-6 items-center justify-center font-mono text-[10px]",
+            isToday
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground"
+          )}
         >
           {day.format("DD")}
         </p>

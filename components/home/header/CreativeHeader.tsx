@@ -1,292 +1,159 @@
-"use client";
-import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { LoadingState } from "@/components/ui/loadingState";
-import { ArrowRight, Play, Sparkles, Users, Zap, Target, Star, Globe } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useRouteLoading, RouteLoadingOverlay } from "@/hooks/useRouteLoading";
+import Link from "next/link";
+import { ArrowRight, Check } from "lucide-react";
+import { getLocale } from "next-intl/server";
 
-export const CreativeHeader = () => {
-  const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = React.useState(false);
-  const router = useRouter();
-  const { isLoading, startLoading } = useRouteLoading();
+const previewTasks = [
+  { title: "Draft the launch brief", tag: "Writing", done: true },
+  { title: "Review onboarding copy", tag: "Product", done: false },
+  { title: "Sketch the workspace map", tag: "Thinking", done: false },
+];
 
-  const handleGetStarted = async () => {
-    startLoading();
-    try {
-      // TODO: Check if user is already logged in
-      // For now, redirect to sign-up page
-      // In future: if (session) router.push('/dashboard') else router.push('/sign-up')
-      router.push('/sign-up');
-    } catch (error) {
-      console.error('Navigation error:', error);
-    }
-  };
-
-  React.useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+export const CreativeHeader = async () => {
+  const locale = await getLocale();
 
   return (
-    <header className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background/95 to-primary/5 dark:to-primary/10">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Floating orbs */}
-        <div 
-          className="absolute w-96 h-96 bg-gradient-to-br from-primary/20 to-accent/20 dark:from-primary/30 dark:to-accent/30 rounded-full blur-3xl animate-float"
-          style={{ 
-            top: '10%', 
-            left: '10%',
-            transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`
-          }}
-        />
-        <div 
-          className="absolute w-80 h-80 bg-gradient-to-br from-accent/15 to-secondary/15 dark:from-accent/25 dark:to-secondary/25 rounded-full blur-3xl animate-float"
-          style={{ 
-            top: '60%', 
-            right: '15%',
-            animationDelay: '2s',
-            transform: `translate(${mousePosition.x * -0.015}px, ${mousePosition.y * -0.015}px)`
-          }}
-        />
-        <div 
-          className="absolute w-64 h-64 bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-full blur-2xl animate-float"
-          style={{ 
-            bottom: '20%', 
-            left: '20%',
-            animationDelay: '4s',
-            transform: `translate(${mousePosition.x * 0.01}px, ${mousePosition.y * 0.01}px)`
-          }}
-        />
-
-        {/* Grid pattern */}
-        <div className="absolute inset-0 bg-grid-white/[0.02] dark:bg-grid-white/[0.05]" />
-        
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-background/40" />
-      </div>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        {/* Announcement Badge */}
-        <div className="inline-flex items-center mb-8 group">
-          <Badge 
-            variant="secondary" 
-            className="px-6 py-3 text-sm font-medium bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 dark:from-primary/20 dark:via-accent/20 dark:to-primary/20 border-primary/20 hover:border-primary/40 transition-all duration-300 group-hover:scale-105 cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
-            ✨ Introducing TaskFlow 2.0 - Now with AI Magic
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-          </Badge>
-        </div>
-
-        {/* Main Hero Text with Creative Typography */}
-        <div className="mb-8">
-          <h1 className="text-4xl sm:text-6xl lg:text-8xl font-bold tracking-tight mb-6 relative">
-            <span className="block mb-4">
-              <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                Where
-              </span>
-              <span className="relative ml-4">
-                <span className="bg-gradient-to-r from-primary via-primary/80 to-accent bg-clip-text text-transparent animate-gradient">
-                  Ideas
-                </span>
-                <div className="absolute -top-4 -right-4 w-8 h-8 bg-yellow-400/20 rounded-full animate-ping" />
-              </span>
-            </span>
-            <span className="block mb-4">
-              <span className="bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                Transform Into
-              </span>
-            </span>
-            <span 
-              className="block bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient relative"
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-            >
-              Reality
-              {isHovered && (
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 blur-2xl animate-pulse" />
-              )}
-            </span>
-          </h1>
-
-          {/* Subtitle with Animation */}
-          <p className="max-w-3xl mx-auto text-lg sm:text-xl lg:text-2xl text-muted-foreground mb-12 leading-relaxed">
-            <span className="bg-gradient-to-r from-muted-foreground to-muted-foreground/80 bg-clip-text text-transparent">
-              TaskFlow isn't just another productivity app—it's your creative command center. 
-              Transform chaos into clarity with our revolutionary workflow system.
-            </span>
-          </p>
-        </div>
-
-        {/* Interactive CTA Section */}
-        <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
-          <Button 
-            size="lg" 
-            className="group relative bg-gradient-to-r from-primary via-primary/90 to-accent hover:from-primary/90 hover:via-primary/80 hover:to-accent/90 text-lg px-12 py-6 h-auto shadow-2xl hover:shadow-3xl transition-all duration-300 overflow-hidden disabled:opacity-50"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onClick={handleGetStarted}
-            disabled={isLoading}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-            {isLoading ? (
-              <>
-                <LoadingState className="mr-3" />
-                Getting Started...
-              </>
-            ) : (
-              <>
-                <Zap className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform duration-200" />
-                Start Your Journey
-                <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-2 transition-transform duration-200" />
-              </>
-            )}
-          </Button>
-          
-          {/* <Button 
-            variant="outline" 
-            size="lg" 
-            className="group text-lg px-12 py-6 h-auto border-2 border-border/50 hover:border-primary/50 bg-card/50 backdrop-blur-sm hover:bg-primary/5 transition-all duration-300"
-            onClick={() => {
-              // TODO: Add demo video modal or scroll to demo section
-              window.scrollTo({ 
-                top: document.body.scrollHeight, 
-                behavior: 'smooth' 
-              });
-            }}
-          >
-            <Play className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform duration-200" />
-            Watch Magic Happen
-          </Button> */}
-        </div>
-
-        {/* Feature Highlights with Creative Layout */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
-          {[
-            { icon: Target, text: "Tasks", color: "from-blue-500/20 to-cyan-500/20" },
-            { icon: Users, text: "Team Harmony", color: "from-green-500/20 to-emerald-500/20" },
-            { icon: Zap, text: "Lightning Fast", color: "from-yellow-500/20 to-orange-500/20" },
-            { icon: Globe, text: "Global Sync", color: "from-purple-500/20 to-pink-500/20" }
-          ].map((feature, index) => (
-            <div 
-              key={index}
-              className="group relative p-6 bg-card/30 backdrop-blur-sm border border-border/30 rounded-2xl hover:border-primary/30 transition-all duration-300 hover:scale-105 cursor-pointer"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
-              <div className="relative z-10">
-                <feature.icon className="w-8 h-8 text-primary mb-3 mx-auto group-hover:scale-110 transition-transform duration-200" />
-                <span className="text-sm font-medium text-center block">{feature.text}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Interactive Demo Preview */}
-        <div className="relative max-w-6xl mx-auto">
-          <div className="relative bg-gradient-to-br from-card/60 to-card/30 backdrop-blur-xl border border-border/40 rounded-3xl p-8 shadow-2xl overflow-hidden group">
-            {/* Demo Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Dashboard */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-green-400 rounded-full animate-pulse" />
-                    <span className="text-sm font-medium">Live Dashboard</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="w-3 h-3 bg-primary/20 rounded-full" />
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  {[1,2,3,4].map(i => (
-                    <div key={i} className="flex items-center gap-4 p-4 bg-gradient-to-r from-primary/5 to-accent/5 rounded-xl border border-border/20">
-                      <div className="w-6 h-6 bg-primary/20 rounded-lg" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 bg-foreground/10 rounded-full w-3/4" />
-                        <div className="h-2 bg-foreground/5 rounded-full w-1/2" />
-                      </div>
-                      <div className="w-12 h-6 bg-green-400/20 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Side Panel */}
-              <div className="space-y-6">
-                <div className="p-4 bg-gradient-to-br from-accent/10 to-secondary/10 rounded-2xl border border-border/20">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Star className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm font-medium">Quick Actions</span>
-                  </div>
-                  <div className="space-y-3">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="h-8 bg-card/50 rounded-lg border border-border/10" />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/20">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-primary/20 rounded-full mx-auto mb-3 flex items-center justify-center">
-                      <Zap className="w-8 h-8 text-primary" />
-                    </div>
-                    <p className="text-sm font-medium">AI Assistant Ready</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Action Buttons */}
-            <div className="absolute top-4 right-4 flex gap-2">
-              <div className="w-8 h-8 bg-primary/20 rounded-full animate-pulse" />
-              <div className="w-8 h-8 bg-accent/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-            </div>
-
-            {/* Glow Effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+    <header className="relative border-b border-border">
+      <div className="mx-auto grid max-w-[1280px] items-center gap-16 px-5 pb-20 pt-16 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-14 lg:pb-28 lg:pt-24">
+        <div className="max-w-[640px]">
+          <div className="mb-8 flex items-center gap-3">
+            <span className="h-px w-8 bg-foreground/40" />
+            <p className="eyebrow">The working desk, reconsidered</p>
           </div>
 
-          {/* Floating Elements */}
-          <div className="absolute -top-6 -left-6 w-12 h-12 bg-primary/10 rounded-full animate-float" />
-          <div className="absolute -top-8 -right-8 w-8 h-8 bg-accent/10 rounded-full animate-float" style={{ animationDelay: '1s' }} />
-          <div className="absolute -bottom-6 left-1/4 w-10 h-10 bg-secondary/10 rounded-full animate-float" style={{ animationDelay: '2s' }} />
-        </div>
+          <h1 className="text-[3.4rem] leading-[0.94] sm:text-[4.6rem] lg:text-[5.6rem]">
+            The work,
+            <br />
+            <em className="italic text-primary">without the noise.</em>
+          </h1>
 
-        {/* Social Proof with Animation */}
-        {/*
-        <div className="mt-20 pt-12 border-t border-border/20">
-          <p className="text-sm text-muted-foreground mb-8 flex items-center justify-center gap-2">
-            <span>Trusted by innovators worldwide</span>
-            <Globe className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
+          <p className="mt-8 max-w-[500px] text-[15px] leading-[1.8] text-muted-foreground">
+            TaskFlow keeps tasks, notes, mind maps and focus sessions on one
+            quiet surface. Built for people and small teams who would rather do
+            the work than manage the software.
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-60">
-            {["TechCorp", "InnovateLab", "FutureWorks", "DigitalFlow", "CreativeSpace"].map((company, index) => (
-              <div 
-                key={index} 
-                className="text-xl font-bold text-muted-foreground hover:text-primary transition-colors duration-200 cursor-pointer hover:scale-105 transform"
-                style={{ animationDelay: `${index * 0.1}s` }}
+
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <Link
+              href={`/${locale}/sign-up`}
+              className="inline-flex h-11 items-center gap-2 bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Create your workspace
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href={`/${locale}/sign-in`}
+              className="inline-flex h-11 items-center border border-border px-6 text-sm font-medium transition-colors hover:bg-secondary"
+            >
+              Sign in
+            </Link>
+          </div>
+
+          <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-5">
+            {[
+              "Free to start",
+              "Private by default",
+              "No credit card",
+            ].map((item) => (
+              <span
+                key={item}
+                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground"
               >
-                {company}
-              </div>
+                <Check className="h-3 w-3 text-primary" />
+                {item}
+              </span>
             ))}
           </div>
         </div>
-        */}
-      </div>
 
-      {/* Route Loading Overlay */}
-      <RouteLoadingOverlay isVisible={isLoading} />
+        <div className="relative">
+          <p className="mb-3 text-right font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            A workspace, at a glance
+          </p>
+          <div className="relative border border-foreground/20 bg-card">
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                Studio — today
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                <span className="h-1.5 w-1.5 bg-primary" />
+                22 Oct
+              </span>
+            </div>
+
+            <div className="px-5 py-6">
+              <div className="mb-5 flex items-end justify-between">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Thursday
+                  </p>
+                  <h2 className="mt-1 font-display text-[2rem] leading-none">
+                    Today
+                  </h2>
+                </div>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  3 open · 1 done
+                </p>
+              </div>
+
+              <div className="border-t border-border">
+                {previewTasks.map((task, index) => (
+                  <div
+                    key={task.title}
+                    className="flex items-center gap-3 border-b border-border py-3.5"
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center border ${
+                        task.done
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-foreground/25"
+                      }`}
+                    >
+                      {task.done && <Check className="h-3 w-3" />}
+                    </span>
+                    <span
+                      className={`flex-1 text-[13px] ${
+                        task.done
+                          ? "text-muted-foreground line-through decoration-border"
+                          : ""
+                      }`}
+                    >
+                      {task.title}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+                      0{index + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 grid grid-cols-[1fr_auto] items-center gap-4 border border-border bg-background/60 p-4">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+                    Focus · round one
+                  </p>
+                  <p className="mt-1 font-mono text-2xl tracking-tight">
+                    25:00
+                  </p>
+                </div>
+                <div className="flex h-9 w-9 items-center justify-center border border-foreground/25">
+                  <span className="ml-0.5 h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-foreground" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border px-5 py-2.5">
+              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                Tasks / Notes / Maps
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                Preview
+              </span>
+            </div>
+          </div>
+
+          <div className="absolute -bottom-4 -left-4 -z-10 h-full w-full border border-border" />
+        </div>
+      </div>
     </header>
   );
 };

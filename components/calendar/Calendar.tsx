@@ -2,7 +2,7 @@
 
 import { getMonth } from "@/lib/utils";
 import dayjs from "dayjs";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarGrid } from "./CalendarGrid";
 import { useQuery } from "@tanstack/react-query";
@@ -15,12 +15,10 @@ interface Props {
 }
 
 export const Calendar = ({ userId }: Props) => {
-  const [currMonth, setCurrMonth] = useState(getMonth());
   const [monthIndex, setMonthIndex] = useState(dayjs().month());
-
-  useEffect(() => {
-    setCurrMonth(getMonth(monthIndex));
-  }, [monthIndex]);
+  const currMonth = useMemo(() => getMonth(monthIndex), [monthIndex]);
+  const rangeStart = currMonth[0][0].date.startOf("day").toISOString();
+  const rangeEnd = currMonth[5][6].date.endOf("day").toISOString();
 
   const changeMonthHandler = useCallback((change: "next" | "prev") => {
     if (change === "next") setMonthIndex((prev) => prev + 1);
@@ -38,14 +36,19 @@ export const Calendar = ({ userId }: Props) => {
     isError,
   } = useQuery({
     queryFn: async () => {
-      const res = await fetch(`/api/calendar/get?userId=${userId}`);
+      const params = new URLSearchParams({
+        userId,
+        from: rangeStart,
+        to: rangeEnd,
+      });
+      const res = await fetch(`/api/calendar/get?${params}`);
 
       if (!res.ok) throw new Error();
 
-      const data = (await res.json()) as CalendarItem[];
-      return data;
+      return (await res.json()) as CalendarItem[];
     },
-    queryKey: ["getCalendarItems", userId],
+    queryKey: ["getCalendarItems", userId, rangeStart, rangeEnd],
+    staleTime: 2 * 60 * 1000,
   });
 
   if (isLoading) return <LoadingScreen />;
@@ -55,10 +58,8 @@ export const Calendar = ({ userId }: Props) => {
       <ClientError hrefToGoOnReset="/dashboard/calendar" message={"error"} />
     );
 
-  console.log(calendarItems);
-
   return (
-    <div className="w-full h-full flex flex-col gap-8 items-center">
+    <div className="mx-auto flex h-full w-full max-w-[1200px] flex-col gap-6 px-5 py-8 sm:px-8">
       <CalendarHeader
         monthIndex={monthIndex}
         onChangeMonthHandler={changeMonthHandler}
@@ -67,7 +68,7 @@ export const Calendar = ({ userId }: Props) => {
       <CalendarGrid
         currMonth={currMonth}
         monthIndex={monthIndex}
-        calendarItems={calendarItems!}
+        calendarItems={calendarItems ?? []}
       />
     </div>
   );

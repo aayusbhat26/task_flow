@@ -12,8 +12,10 @@ export const onboardingSchema = z.object({
     ),
   workspaceName: z
     .string()
-    .min(4)
-    .refine((username) => /^[a-zA-Z0-9]+$/.test(username)),
+    .trim()
+    .min(2)
+    .max(40)
+    .refine((name) => /^[\p{L}\p{N}][\p{L}\p{N} _.-]*$/u.test(name)),
   workspaceImage: z.string().optional().nullable(),
   leetcodeUsername: z.string().optional().nullable(),
   codeforcesUsername: z.string().optional().nullable(),

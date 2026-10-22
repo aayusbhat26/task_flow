@@ -31,7 +31,7 @@ export const NewChannelModal = ({ workspaceId, categoryId, categories, children 
     resolver: zodResolver(newChannelSchema),
     defaultValues: {
       name: "",
-      type: "VOICE" as any,
+      type: "TEXT" as any,
       workspaceId,
       categoryId: categoryId || undefined,
     },
@@ -59,7 +59,13 @@ export const NewChannelModal = ({ workspaceId, categoryId, categories, children 
   });
 
   const onSubmit = (data: NewChannelSchema) => {
-    mutate(data);
+    mutate({
+      ...data,
+      categoryId:
+        !data.categoryId || data.categoryId === "none"
+          ? null
+          : data.categoryId,
+    });
   };
 
   return (
@@ -87,6 +93,7 @@ export const NewChannelModal = ({ workspaceId, categoryId, categories, children 
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type">
+                          {field.value === "TEXT" && "Text"}
                           {field.value === "VOICE" && "Voice"}
                           {field.value === "VIDEO" && "Video"}
                           {field.value === "STAGE" && "Stage"}
@@ -95,6 +102,9 @@ export const NewChannelModal = ({ workspaceId, categoryId, categories, children 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="TEXT">
+                        <div className="flex items-center"><Hash className="mr-2 h-4 w-4" /> Text</div>
+                      </SelectItem>
                       <SelectItem value="VOICE">
                         <div className="flex items-center"><Volume2 className="mr-2 h-4 w-4" /> Voice</div>
                       </SelectItem>

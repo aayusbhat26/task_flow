@@ -23,18 +23,12 @@ export async function GET(request: NextRequest) {
     // 1. Fetch completed tasks today
     const completedTasksCount = await db.task.count({
       where: {
-        updatedAt: {
+        isCompleted: true,
+        completedAt: {
           gte: startOfToday,
           lte: endOfToday,
         },
-        status: "DONE",
-        workspace: {
-          subscribers: {
-            some: {
-              userId,
-            },
-          },
-        },
+        updatedUserId: userId,
       },
     });
 

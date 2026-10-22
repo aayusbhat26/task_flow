@@ -24,6 +24,8 @@ interface Props {
   // New prop to handle special cases where Link can't be used
   forceDiv?: boolean;
   onClick?: (e: React.MouseEvent) => void;
+  title?: string;
+  "aria-label"?: string;
 }
 
 const ActiveLink = React.forwardRef<HTMLAnchorElement, Props>(
@@ -53,9 +55,9 @@ const ActiveLink = React.forwardRef<HTMLAnchorElement, Props>(
     const linkClass = cn(
       buttonVariants({ variant, size }),
       {
-        // Active state styling
-        "font-semibold border-secondary-foreground border-2": isActive && workspaceIcon,
-        "bg-secondary font-semibold": isActive && !workspaceIcon && !disableActiveStateColor,
+        "border border-foreground/40 bg-secondary": isActive && workspaceIcon,
+        "relative bg-secondary font-medium text-foreground after:absolute after:bottom-2 after:left-0 after:top-2 after:w-[2px] after:bg-primary":
+          isActive && !workspaceIcon && !disableActiveStateColor,
       },
       className
     );

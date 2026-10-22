@@ -11,7 +11,11 @@ const SecuritySettings = async () => {
       <DashboardHeader>
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <SecurityCard />
+      <main className="min-h-full">
+        <div className="mx-auto w-full max-w-[900px] px-5 py-8 sm:px-8">
+          <SecurityCard />
+        </div>
+      </main>
     </>
   );
 };

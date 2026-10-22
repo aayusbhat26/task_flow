@@ -12,10 +12,10 @@ export const UserStatusTypeList = ({ users, title, active }: Props) => {
 
   return (
     <div>
-      <p className="text-xs sm:text-sm uppercase text-muted-foreground">
+      <p className="eyebrow">
         {title} - {users.length}
       </p>
-      <div className="flex flex-col gap-2 w-full mt-2">
+      <div className="mt-2 flex w-full flex-col gap-0.5">
         {users.map((user) => (
           <UserStatus
             key={user.id}

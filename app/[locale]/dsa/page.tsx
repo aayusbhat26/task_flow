@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -103,11 +103,14 @@ export default function DSAPracticePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedQuestion, setSelectedQuestion] = useState<DSAQuestion | null>(null);
   const [progressNotes, setProgressNotes] = useState('');
   const [progressRating, setProgressRating] = useState<number>(0);
   const [showUploader, setShowUploader] = useState(false);
+  const questionsRequestId = useRef(0);
   const { toast } = useToast();
+  const isInitialLoading = loading && questions.length === 0;
 
   // Fetch import batches
   const fetchImportBatches = async () => {
@@ -125,53 +128,46 @@ export default function DSAPracticePage() {
   // Fetch comprehensive stats (both curated and imported)
   const fetchOverallStats = async () => {
     try {
-      console.log('🔍 Fetching overall stats...');
       const response = await fetch(`/api/dsa/all-stats?t=${Date.now()}`, {
         cache: 'no-store'
       });
       const data = await response.json();
-      
-      console.log('📊 All-stats API response:', data);
-      
+
       if (data.overall) {
-        console.log('✅ Setting overall stats:', {
-          total: data.overall.total,
-          completed: data.overall.solved,
-          inProgress: data.overall.inProgress,
-          completionPercentage: data.overall.completionPercentage
-        });
         setOverallStats({
           total: data.overall.total,
           completed: data.overall.solved,
           inProgress: data.overall.inProgress,
           completionPercentage: data.overall.completionPercentage
         });
-      } else {
-        console.error('❌ No overall stats in response:', data);
       }
     } catch (error) {
-      console.error('❌ Error fetching overall stats:', error);
+      console.error('Error fetching overall stats:', error);
     }
   };
 
-  // Load initial data
+  // Load the import batches and overall stats once.
   useEffect(() => {
-    console.log('🚀 DSA Page mounting, loading initial data...');
-    fetchQuestions();
     fetchImportBatches();
     fetchOverallStats();
   }, []); // Only run on mount
 
-  // Fetch questions when filters change
+  // Debounce free-text search so each keystroke does not hit the API.
   useEffect(() => {
-    console.log('🔍 Filters changed, fetching questions...');
-    fetchQuestions();
-  }, [selectedTopic, selectedDifficulty, selectedStatus, searchQuery]);
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch questions when filters change, cancelling stale requests.
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchQuestions(controller.signal);
+    return () => controller.abort();
+  }, [selectedTopic, selectedDifficulty, selectedStatus, debouncedSearch]);
 
   // Listen for progress updates from ImportedQuestionsTab
   useEffect(() => {
     const handleProgressUpdate = () => {
-      console.log('📡 Received progress update event, refreshing overall stats...');
       fetchOverallStats();
     };
 
@@ -182,54 +178,47 @@ export default function DSAPracticePage() {
     };
   }, []);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = async (signal?: AbortSignal) => {
+    const requestId = ++questionsRequestId.current;
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (selectedTopic !== 'all') params.append('topic', selectedTopic);
       if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
       if (selectedStatus !== 'all') params.append('status', selectedStatus);
-      if (searchQuery) params.append('search', searchQuery);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       
       // Explicitly include imported questions to match the stats
       params.append('includeImported', 'true');
 
-      console.log('🔍 Fetching questions with params:', params.toString());
-      
-      const response = await fetch(`/api/dsa/questions?${params}`);
+      const response = await fetch(`/api/dsa/questions?${params}`, { signal });
       const data = await response.json();
 
-      console.log('📊 Questions API response:', data);
+      if (requestId !== questionsRequestId.current) return;
 
       if (data.success) {
-        console.log('✅ Setting questions:', data.questions.length, 'questions');
         setQuestions(data.questions);
         setStats(data.stats);
         setTopicProgress(data.topicProgress);
-        
-        // Log debug info if available
-        if (data.debug) {
-          console.log('🔍 Debug info:', data.debug);
-        }
       } else {
-        console.error('❌ API returned error:', data.error);
         throw new Error(data.error);
       }
     } catch (error) {
-      console.error('❌ Error fetching questions:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      if (requestId !== questionsRequestId.current) return;
+      console.error('Error fetching questions:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to fetch questions',
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      if (requestId === questionsRequestId.current) setLoading(false);
     }
   };
 
   const updateProgress = async (questionId: string, status: string, notes?: string, rating?: number) => {
     try {
-      console.log('🔄 Updating progress:', { questionId, status });
       const response = await fetch('/api/dsa/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -242,7 +231,6 @@ export default function DSAPracticePage() {
       });
 
       const data = await response.json();
-      console.log('📊 Progress API response:', data);
 
       if (data.success) {
         toast({
@@ -275,20 +263,16 @@ export default function DSAPracticePage() {
         );
         
         // Refresh both filtered questions and overall stats
-        console.log('🔄 Refreshing questions and overall stats...');
         await fetchQuestions();
         await fetchOverallStats();
         
-        // Dispatch event to notify other components (like dashboard and handpicked tracker)
-        console.log('📡 Dispatching dsaProgressUpdated event...');
+        // Notify the dashboard and other trackers that progress changed.
         window.dispatchEvent(new CustomEvent('dsaProgressUpdated'));
-        
-        console.log('✅ Refresh completed');
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
-      console.error('❌ Update progress error:', error);
+      console.error('Error updating DSA progress:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to update progress',
@@ -298,51 +282,7 @@ export default function DSAPracticePage() {
   };
 
   const getQuestionStatus = (question: DSAQuestion) => {
-    const status = question.progress?.[0]?.status || 'TODO';
-    console.log(`🔍 Question ${question.id} status:`, status, 'Progress:', question.progress);
-    return status;
-  };
-
-  // Test function to manually test completion
-  const testCompletion = async (questionId: string) => {
-    console.log('🧪 Testing completion for question:', questionId);
-    try {
-      const response = await fetch('/api/dsa/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionId,
-          status: 'COMPLETED',
-          notes: 'Test completion',
-          rating: 5
-        })
-      });
-
-      const data = await response.json();
-      console.log('🧪 Test completion response:', data);
-
-      if (data.success) {
-        toast({
-          title: 'Test Success',
-          description: 'Test completion successful'
-        });
-        await fetchQuestions();
-        await fetchOverallStats();
-      } else {
-        toast({
-          title: 'Test Failed',
-          description: data.error,
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('🧪 Test completion error:', error);
-      toast({
-        title: 'Test Error',
-        description: 'Test completion failed',
-        variant: 'destructive'
-      });
-    }
+    return question.progress?.[0]?.status || 'TODO';
   };
 
   const getStatusIcon = (status: string) => {
@@ -358,32 +298,51 @@ export default function DSAPracticePage() {
 
   const uniqueTopics = [...new Set(questions.map(q => q.topic))].sort();
 
+  const exportProgress = () => {
+    const header = ["title", "topic", "difficulty", "platform", "status", "attempts", "time_spent_minutes"];
+    const rows = questions.map((question) => {
+      const progress = question.progress?.[0];
+      return [
+        question.title,
+        question.topic,
+        question.difficulty,
+        question.platform,
+        progress?.status ?? "TODO",
+        progress?.attempts ?? 0,
+        progress?.timeSpent ?? 0,
+      ];
+    });
+    const escape = (value: unknown) =>
+      `"${String(value).replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map((row) => row.map(escape).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "taskflow-dsa-progress.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1200px] space-y-6 px-5 py-8 sm:px-8">
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => router.push('/')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">DSA Practice</h1>
-              <p className="text-muted-foreground">Master Data Structures & Algorithms for placement interviews</p>
-            </div>
+      <div className="flex flex-col gap-5 border-b border-border pb-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Practice</p>
+            <h1 className="mt-2 font-display text-4xl leading-none sm:text-5xl">
+              DSA practice
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Data structures and algorithms, tracked by difficulty and topic.
+            </p>
           </div>
           <div className="flex gap-2">
             <Dialog open={showUploader} onOpenChange={setShowUploader}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Upload className="w-4 h-4 mr-2" />
-                  Import Questions
+                  Import
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl">
@@ -393,9 +352,9 @@ export default function DSAPracticePage() {
                 }} />
               </DialogContent>
             </Dialog>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={exportProgress}>
               <Download className="w-4 h-4 mr-2" />
-              Export Progress
+              Export CSV
             </Button>
           </div>
         </div>
@@ -408,7 +367,13 @@ export default function DSAPracticePage() {
                 <Target className="w-5 h-5 text-blue-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Total Questions</p>
-                  <p className="text-2xl font-bold">{overallStats.total}</p>
+                  <p className="text-2xl font-bold">
+                    {isInitialLoading ? (
+                      <span className="mt-1 block h-7 w-12 animate-pulse rounded-sm bg-muted" />
+                    ) : (
+                      overallStats.total
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">Curated + Imported</p>
                 </div>
               </div>
@@ -421,7 +386,13 @@ export default function DSAPracticePage() {
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="text-2xl font-bold">{overallStats.completed}</p>
+                  <p className="text-2xl font-bold">
+                    {isInitialLoading ? (
+                      <span className="mt-1 block h-7 w-10 animate-pulse rounded-sm bg-muted" />
+                    ) : (
+                      overallStats.completed
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">All questions</p>
                 </div>
               </div>
@@ -434,7 +405,13 @@ export default function DSAPracticePage() {
                 <Clock className="w-5 h-5 text-orange-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">In Progress</p>
-                  <p className="text-2xl font-bold">{overallStats.inProgress}</p>
+                  <p className="text-2xl font-bold">
+                    {isInitialLoading ? (
+                      <span className="mt-1 block h-7 w-8 animate-pulse rounded-sm bg-muted" />
+                    ) : (
+                      overallStats.inProgress
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">All questions</p>
                 </div>
               </div>
@@ -447,7 +424,13 @@ export default function DSAPracticePage() {
                 <TrendingUp className="w-5 h-5 text-purple-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Progress</p>
-                  <p className="text-2xl font-bold">{overallStats.completionPercentage}%</p>
+                  <p className="text-2xl font-bold">
+                    {isInitialLoading ? (
+                      <span className="mt-1 block h-7 w-10 animate-pulse rounded-sm bg-muted" />
+                    ) : (
+                      `${overallStats.completionPercentage}%`
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">Overall completion</p>
                 </div>
               </div>
@@ -462,7 +445,9 @@ export default function DSAPracticePage() {
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Overall Progress</span>
                 <span className="text-sm text-muted-foreground">
-                  {overallStats.completed} / {overallStats.total} questions completed
+                  {isInitialLoading
+                    ? "Loading totals…"
+                    : `${overallStats.completed} / ${overallStats.total} questions completed`}
                 </span>
               </div>
               <Progress value={overallStats.completionPercentage} className="w-full" />
@@ -474,7 +459,7 @@ export default function DSAPracticePage() {
       <Tabs defaultValue="questions" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="questions">Curated Questions</TabsTrigger>
-          <TabsTrigger value="handpicked">Aayush's Hand Picked</TabsTrigger>
+          <TabsTrigger value="handpicked">Hand-picked</TabsTrigger>
           <TabsTrigger value="topics">Topics</TabsTrigger>
           <TabsTrigger value="imported">All Imports</TabsTrigger>
           {importBatches.map((batch) => (
@@ -552,22 +537,28 @@ export default function DSAPracticePage() {
                   <p className="mt-2 text-muted-foreground">Loading questions...</p>
                 </div>
               ) : questions.length === 0 ? (
-                <div className="text-center py-8">
-                  <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">No questions found</p>
+                <div className="flex flex-col items-center gap-3 border border-border bg-card py-12 text-center">
+                  <BookOpen className="h-8 w-8 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">No questions yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Import a question set to begin tracking practice.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowUploader(true)}
+                  >
+                    <Upload className="mr-2 h-3.5 w-3.5" />
+                    Import questions
+                  </Button>
                 </div>
               ) : (
                 questions.map((question) => {
                   const status = getQuestionStatus(question);
                   const progress = question.progress?.[0];
-                  
-                  console.log(`🔍 Rendering question ${question.id}:`, {
-                    title: question.title,
-                    status,
-                    progress,
-                    progressLength: question.progress?.length
-                  });
-                  
+
                   return (
                     <Card key={question.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
@@ -725,10 +716,7 @@ export default function DSAPracticePage() {
                           <div className="flex flex-col items-center gap-2" style={{width: '20%'}}>
                             <Button
                               onClick={() => {
-                                console.log('🔴 BUTTON CLICKED! Question:', question.id, 'Current status:', status);
-                                console.log('🔍 Question progress:', question.progress);
                                 const newStatus = status === 'COMPLETED' ? 'TODO' : 'COMPLETED';
-                                console.log('🔄 New status will be:', newStatus);
                                 // Play sound for completion
                                 if (newStatus === 'COMPLETED') {
                                   playQuestionCompletionSound(undefined, soundsEnabled);

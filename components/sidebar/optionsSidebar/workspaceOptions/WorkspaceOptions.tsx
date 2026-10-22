@@ -38,9 +38,9 @@ export const WorkspaceOptions = ({ workspaceId }: Props) => {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <div>
-        <p className="text-xs sm:text-sm uppercase text-muted-foreground mb-2">
+        <p className="eyebrow mb-2.5 flex items-center justify-between border-b border-border pb-2">
           {t("SHORTCUTS")}
         </p>
         {!isLoading && workspaceShortcuts && (
@@ -67,13 +67,13 @@ export const WorkspaceOptions = ({ workspaceId }: Props) => {
         )}
       </div>
       <div>
-        <p className="text-xs sm:text-sm uppercase text-muted-foreground mb-2">
+        <p className="eyebrow mb-2.5 flex items-center justify-between border-b border-border pb-2">
           CHANNELS
         </p>
         <ChannelsList workspaceId={workspaceId} />
       </div>
       <div>
-        <p className="text-xs sm:text-sm uppercase text-muted-foreground mb-2">
+        <p className="eyebrow mb-2.5 flex items-center justify-between border-b border-border pb-2">
           {t("ACTIONS")}
         </p>
         <div className="flex flex-col gap-2 w-full mt-2">

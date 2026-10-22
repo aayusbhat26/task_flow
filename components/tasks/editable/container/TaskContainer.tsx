@@ -1,5 +1,5 @@
 "use client";
-import { CustomColors, Tag } from "@prisma/client";
+import { Tag, TaskPriority } from "@prisma/client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -24,10 +24,8 @@ import { changeCodeToEmoji } from "@/lib/changeCodeToEmoji";
 import { useTags } from "@/hooks/useTags";
 import dynamic from "next/dynamic";
 import { LoadingScreen } from "@/components/common/LoadingScreen";
-import { useSession } from "next-auth/react";
-import { Sparkles, Timer, Lock, Flag, Loader2 } from "lucide-react";
+import { Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 
 const EditorTasks = dynamic(
   () => import("../editor/Editor").then((mod) => mod.EditorTasks),
@@ -46,6 +44,7 @@ interface Props {
   emoji?: string;
   from?: Date;
   to?: Date;
+  priority?: TaskPriority;
 }
 
 export const TaskContainer = ({
@@ -57,25 +56,13 @@ export const TaskContainer = ({
   emoji,
   from,
   to,
+  priority: initialPriority = "MEDIUM",
 }: Props) => {
   const [isMounted, setIsMounted] = useState(false);
   const _titleRef = useRef<HTMLTextAreaElement>(null);
   const t = useTranslations("TASK");
   const [taskDate] = useState({ from, to });
-  
-  const { data: session } = useSession();
-  const router = useRouter();
-  const isPro = session?.user?.plan === "PRO" || session?.user?.plan === "BUSINESS";
-
-  const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "URGENT">("MEDIUM");
-
-  const handleProFeatureClick = (action: () => void) => {
-    if (!isPro) {
-      router.push("/upgrade");
-    } else {
-      action();
-    }
-  };
+  const [priority, setPriority] = useState<TaskPriority>(initialPriority);
 
   const { status, onSetStatus } = useAutosaveIndicator();
 
@@ -133,6 +120,27 @@ export const TaskContainer = ({
     },
   });
 
+  const { mutate: updateTaskPriority } = useMutation({
+    mutationFn: async (nextPriority: TaskPriority) => {
+      await axios.post("/api/task/update/priority", {
+        workspaceId,
+        taskId,
+        priority: nextPriority,
+      });
+    },
+    onSuccess: () => onSetStatus("saved"),
+    onError: () => onSetStatus("unsaved"),
+  });
+
+  const cyclePriority = () => {
+    const priorities: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+    const next =
+      priorities[(priorities.indexOf(priority) + 1) % priorities.length];
+    setPriority(next);
+    onSetStatus("pending");
+    updateTaskPriority(next);
+  };
+
   const debouncedTitle = useDebouncedCallback(
     useCallback((value: string) => {
       onSetStatus("pending");
@@ -167,7 +175,7 @@ export const TaskContainer = ({
   );
 
   return (
-    <Card>
+    <Card className="mx-auto w-full max-w-4xl">
       <form
         id="task-form"
         onSubmit={(e) => {
@@ -175,36 +183,39 @@ export const TaskContainer = ({
           e.stopPropagation();
         }}
       >
-        <CardContent className="py-4 sm:py-6 flex flex-col gap-10">
-          <div className="w-full flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
+        <CardContent className="flex flex-col p-6 sm:p-10">
+          <div className="flex w-full flex-col items-start gap-3 sm:flex-row sm:gap-5">
             <Emoji
               onFormSelect={onFormSelectHandler}
               emoji={form.getValues("icon")}
               taskId={taskId}
               workspaceId={workspaceId}
             />
-            <div className="w-full flex flex-col gap-2">
-              <TextareaAutosize
-                {...rest}
-                ref={(e) => {
-                  titleRef(e);
-                  //@ts-ignore
-                  _titleRef.current = e;
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.preventDefault();
-                }}
-                onChange={(e) => {
-                  if (status !== "unsaved") onSetStatus("unsaved");
-                  debouncedTitle(e.target.value);
-                }}
-                onBlur={() => {
-                  debouncedTitle.flush();
-                }}
-                placeholder={t("HEADER.PLACEHOLDER")}
-                className="w-full resize-none appearance-none overflow-hidden bg-transparent placeholder:text-muted-foreground text-2xl font-semibold focus:outline-none"
-              />
-              <div className="w-full gap-1 flex flex-wrap flex-row">
+            <div className="flex w-full flex-col gap-3">
+              <div>
+                <p className="eyebrow mb-2">Task</p>
+                <TextareaAutosize
+                  {...rest}
+                  ref={(e) => {
+                    titleRef(e);
+                    //@ts-ignore
+                    _titleRef.current = e;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.preventDefault();
+                  }}
+                  onChange={(e) => {
+                    if (status !== "unsaved") onSetStatus("unsaved");
+                    debouncedTitle(e.target.value);
+                  }}
+                  onBlur={() => {
+                    debouncedTitle.flush();
+                  }}
+                  placeholder={t("HEADER.PLACEHOLDER")}
+                  className="w-full resize-none appearance-none overflow-hidden bg-transparent font-display text-4xl leading-[1.08] placeholder:text-muted-foreground/80 focus:outline-none sm:text-5xl"
+                />
+              </div>
+              <div className="flex w-full flex-row flex-wrap gap-1.5">
                 <TaskCalendar
                   onUpdateForm={onUpdateFormHandler}
                   workspaceId={workspaceId}
@@ -223,26 +234,16 @@ export const TaskContainer = ({
                   onDeleteActiveTag={onDeleteActiveTagHandler}
                 />
 
-                {/* Premium Feature: Advanced Priority */}
-                <Button 
+                <Button
                   type="button"
-                  variant="outline" 
-                  size="sm" 
-                  className={`h-9 px-3 flex items-center gap-2 ${!isPro ? "bg-muted/50 border-dashed" : "hover:bg-primary/10"}`}
-                  onClick={() => handleProFeatureClick(() => {
-                    const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
-                    const nextIndex = (priorities.indexOf(priority) + 1) % priorities.length;
-                    setPriority(priorities[nextIndex]);
-                  })}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 text-xs"
+                  onClick={cyclePriority}
+                  title="Change priority"
                 >
-                  {isPro ? (
-                    <Flag className={`w-4 h-4 ${priority === "URGENT" ? "text-red-500" : priority === "HIGH" ? "text-orange-500" : priority === "MEDIUM" ? "text-blue-500" : "text-green-500"}`} />
-                  ) : (
-                    <Lock className="w-4 h-4 text-muted-foreground" />
-                  )}
-                  <span className={!isPro ? "text-muted-foreground" : "font-medium"}>
-                    {isPro ? `Priority: ${priority}` : "Priority"}
-                  </span>
+                  <Flag className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="capitalize">{priority.toLowerCase()}</span>
                 </Button>
 
                 {currentActiveTags.map((tag) => (
@@ -251,11 +252,13 @@ export const TaskContainer = ({
               </div>
             </div>
           </div>
-          <EditorTasks
-            workspaceId={workspaceId}
-            taskId={taskId}
-            content={content}
-          />
+          <div className="mt-8 border-t border-border pt-6">
+            <EditorTasks
+              workspaceId={workspaceId}
+              taskId={taskId}
+              content={content}
+            />
+          </div>
         </CardContent>
       </form>
     </Card>

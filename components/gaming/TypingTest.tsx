@@ -374,7 +374,7 @@ export function TypingTest({ workspaceId, currentUser }: { workspaceId: string; 
                 {Array.from(players.values()).map((p, i) => (
                   <div key={p.user.id} className="flex items-center gap-2 px-4 py-2 bg-accent rounded-full text-sm font-medium">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={p.user.image || ""} />
+                      <AvatarImage src={p.user.image || undefined} />
                       <AvatarFallback className="text-[10px] font-bold" style={{ backgroundColor: PLAYER_COLORS[i % PLAYER_COLORS.length] }}>
                         {p.user.name?.charAt(0)}
                       </AvatarFallback>
@@ -421,7 +421,7 @@ export function TypingTest({ workspaceId, currentUser }: { workspaceId: string; 
                   <div key={p.user.id} className="flex items-center gap-3">
                     <div className="flex items-center gap-2 w-28 shrink-0">
                       <Avatar className="h-5 w-5">
-                        <AvatarImage src={p.user.image || ""} />
+                        <AvatarImage src={p.user.image || undefined} />
                         <AvatarFallback className="text-[8px] font-bold" style={{ backgroundColor: PLAYER_COLORS[i % PLAYER_COLORS.length] }}>
                           {p.user.name?.charAt(0)}
                         </AvatarFallback>

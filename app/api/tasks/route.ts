@@ -73,49 +73,59 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const tasks = await db.task.findMany({
-      where: whereClause,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            image: true
-          }
-        },
-        assignedToTask: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true
+    const baseWhere = whereClause;
+    const queryWhere: any = { ...baseWhere };
+    if (filter === 'completed') queryWhere.isCompleted = true;
+    if (filter === 'pending') queryWhere.isCompleted = false;
+
+    const [tasks, baseTotal, baseCompleted, queryTotal] = await Promise.all([
+      db.task.findMany({
+        where: queryWhere,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              image: true
+            }
+          },
+          assignedToTask: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true
+                }
               }
+            }
+          },
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              color: true
+            }
+          },
+          taskDate: {
+            select: {
+              id: true,
+              from: true,
+              to: true
             }
           }
         },
-        workspace: {
-          select: {
-            id: true,
-            name: true,
-            color: true
-          }
-        },
-        taskDate: {
-          select: {
-            id: true,
-            from: true,
-            to: true
-          }
-        }
-      },
-      orderBy: [
-        { updatedAt: 'desc' },
-        { createdAt: 'desc' }
-      ],
-      take: limit,
-      skip: offset
-    });
+        orderBy: [
+          { updatedAt: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        take: limit,
+        skip: offset
+      }),
+      db.task.count({ where: baseWhere }),
+      db.task.count({ where: { ...baseWhere, isCompleted: true } }),
+      db.task.count({ where: queryWhere }),
+    ]);
 
     // Process tasks and add completion status
     const processedTasks = tasks.map(task => {
@@ -136,34 +146,19 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Apply completion filter if specified
-    let filteredTasks = processedTasks;
-    if (filter === 'completed') {
-      filteredTasks = processedTasks.filter(task => task.isCompleted);
-    } else if (filter === 'pending') {
-      filteredTasks = processedTasks.filter(task => !task.isCompleted);
-    }
-
-    // Get total count for pagination
-    const totalCount = await db.task.count({
-      where: whereClause
-    });
-
-    const completedCount = processedTasks.filter(task => task.isCompleted).length;
-
     return NextResponse.json({
       success: true,
-      tasks: filteredTasks,
+      tasks: processedTasks,
       pagination: {
-        total: totalCount,
+        total: queryTotal,
         limit,
         offset,
-        hasMore: offset + limit < totalCount
+        hasMore: offset + limit < queryTotal
       },
       stats: {
-        total: processedTasks.length,
-        completed: completedCount,
-        pending: processedTasks.length - completedCount
+        total: baseTotal,
+        completed: baseCompleted,
+        pending: baseTotal - baseCompleted
       }
     });
 

@@ -48,8 +48,8 @@ export const OptionsSidebar = ({
     return null;
   }
   return (
-    <div className="border-r sm:w-80 w-64 h-full p-4 sm:py-6 flex flex-col justify-between">
-      <ScrollArea className="h-full">
+    <div className="flex h-full w-[300px] flex-col justify-between border-r border-border bg-background p-5">
+      <ScrollArea className="h-full pr-1">
         {pathname.includes("/dashboard/settings") && (
           <Settings userAdminWorkspaces={userAdminWorkspaces} />
         )}

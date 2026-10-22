@@ -21,9 +21,13 @@ export const GET = async (request: Request) => {
             title: true,
             id: true,
           },
+          orderBy: { updatedAt: "desc" },
+          take: 40,
         },
         mindMaps: {
           select: { id: true, title: true, emoji: true },
+          orderBy: { updatedAt: "desc" },
+          take: 40,
         },
       },
     });

@@ -30,6 +30,12 @@ export const updateTaskTitleSchema = z.object({
   title: z.string(),
 });
 
+export const updateTaskPrioritySchema = z.object({
+  workspaceId: z.string(),
+  taskId: z.string(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+});
+
 export const updateTaskEmojiSchema = z.object({
   workspaceId: z.string(),
   taskId: z.string(),
@@ -38,6 +44,7 @@ export const updateTaskEmojiSchema = z.object({
 
 export type UpdateTaskDateSchema = z.infer<typeof updateTaskDateSchema>;
 export type UpdateTaskEmojiSchema = z.infer<typeof updateTaskEmojiSchema>;
+export type UpdateTaskPrioritySchema = z.infer<typeof updateTaskPrioritySchema>;
 export type UpdateTaskTitleSchema = z.infer<typeof updateTaskTitleSchema>;
 export type UpdateTaskContentSchema = z.infer<typeof updateTaskContentSchema>;
 export type UpdateTaskActiveTagsSchema = z.infer<

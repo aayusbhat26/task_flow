@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -13,14 +13,43 @@ import {
   Paperclip,
   MoreVertical,
   Menu,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft,
+  Info,
+  Link2,
+  ExternalLink,
+  ClipboardList,
+  Brain
 } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useSocket } from '@/context/SocketProvider';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { ChatSearch } from './ChatSearch';
 import { ThreadSidebar } from './ThreadSidebar';
+import { ChannelBrief } from './ChannelBrief';
+import { DsaRoomPanel } from './DsaRoomPanel';
+import { DsaRoomBanner } from './DsaRoomBanner';
+import type { ChatPoll, ChatTaskCard } from '@/lib/chat-rich';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ToastAction } from '@/components/ui/toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface Workspace {
   id: string;
@@ -75,6 +104,22 @@ interface Message {
   isOptimistic?: boolean;
   readByIds?: string[];
   replyToId?: string | null;
+  type?: 'TEXT' | 'POLL' | 'TASK' | 'SYSTEM';
+  poll?: ChatPoll | null;
+  task?: ChatTaskCard | null;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  _count?: { replies: number };
+  replies?: Array<{
+    id: string;
+    createdAt?: string;
+    author: {
+      id: string;
+      name: string;
+      username: string;
+      image?: string | null;
+    };
+  }>;
 }
 
 interface ChatAreaProps {
@@ -82,6 +127,7 @@ interface ChatAreaProps {
   currentUser: CurrentUser;
   groupId?: string;
   channelId?: string;
+  channelName?: string;
   onOpenMobileMenu?: () => void;
 }
 
@@ -96,14 +142,90 @@ const colorMap = {
   GRAY: 'bg-gray-500',
 };
 
-export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMobileMenu }: ChatAreaProps) {
+export function ChatArea({ workspace, currentUser, groupId, channelId, channelName, onOpenMobileMenu }: ChatAreaProps) {
+  const locale = useLocale();
+  const { toast } = useToast();
   const { socket, isConnected, joinWorkspace, leaveWorkspace } = useSocket();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [activeThread, setActiveThread] = useState<Message | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [dsaOpen, setDsaOpen] = useState(false);
+  const [dsaRoom, setDsaRoom] = useState<any | null>(null);
   const [typingUsers, setTypingUsers] = useState<{ userId: string; username: string }[]>([]);
+
+  const messagesRef = useRef<Message[]>([]);
+  const activeThreadRef = useRef<Message | null>(null);
+  const countedReplyIds = useRef<Set<string>>(new Set());
+  const replyParentMap = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    activeThreadRef.current = activeThread;
+  }, [activeThread]);
+
+  const openThreadPanel = useCallback((message: Message) => {
+    setActiveThread(message);
+    setBriefOpen(false);
+    setDsaOpen(false);
+  }, []);
+
+  const openBriefPanel = useCallback(() => {
+    setBriefOpen(true);
+    setDsaOpen(false);
+    setActiveThread(null);
+  }, []);
+
+  const openDsaPanel = useCallback(() => {
+    setDsaOpen(true);
+    setBriefOpen(false);
+    setActiveThread(null);
+  }, []);
+
+  const refreshDsaRoom = useCallback(async () => {
+    if (!channelId) {
+      setDsaRoom(null);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `/api/dsa/rooms?channelId=${encodeURIComponent(channelId)}&workspaceId=${encodeURIComponent(workspace.id)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setDsaRoom(data.active || null);
+      }
+    } catch {
+      // The room banner is supplementary; keep chat usable if it fails.
+    }
+  }, [channelId, workspace.id]);
+
+  useEffect(() => {
+    refreshDsaRoom();
+  }, [refreshDsaRoom]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleDsaRoomChanged = (data: { channelId: string }) => {
+      if (data.channelId === channelId) refreshDsaRoom();
+    };
+    socket.on('dsa-room-changed', handleDsaRoomChanged);
+    return () => {
+      socket.off('dsa-room-changed', handleDsaRoomChanged);
+    };
+  }, [socket, channelId, refreshDsaRoom]);
+
+  useEffect(() => {
+    setActiveThread(null);
+    setBriefOpen(false);
+    setDsaOpen(false);
+  }, [workspace.id, groupId, channelId]);
 
   // Use refs to store socket functions to prevent infinite re-renders
   const joinWorkspaceRef = useRef(joinWorkspace);
@@ -121,9 +243,11 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
   // Join workspace when component mounts, workspace changes, or socket reconnects
   useEffect(() => {
     const roomId = channelId || groupId || workspace.id;
+    setOnlineUsers([]);
     if (roomId && isConnected) {
       console.log('🔗 ChatArea: Joining room:', roomId);
       joinWorkspaceRef.current(roomId);
+      socket?.emit('presence-request', { workspaceId: roomId });
     }
 
     return () => {
@@ -132,7 +256,7 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
         leaveWorkspaceRef.current(roomId);
       }
     };
-  }, [workspace.id, groupId, channelId, isConnected]); // Depend on isConnected to rejoin on reconnect
+  }, [workspace.id, groupId, channelId, isConnected, socket]); // Depend on isConnected to rejoin on reconnect
 
   // Load initial messages
   useEffect(() => {
@@ -161,6 +285,176 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
     }
   }, [workspace.id, groupId, channelId]);
 
+  // Keep the parent message's thread count and participant preview in sync
+  // without reloading the conversation.
+  const registerReply = useCallback((reply: Message) => {
+    if (!reply.replyToId || reply.id.startsWith('temp-')) return;
+    if (countedReplyIds.current.has(reply.id)) return;
+    countedReplyIds.current.add(reply.id);
+    replyParentMap.current.set(reply.id, reply.replyToId);
+
+    const parentSnapshot = messagesRef.current.find(m => m.id === reply.replyToId);
+    const previewEntry = {
+      id: reply.id,
+      createdAt: reply.createdAt,
+      author: reply.author,
+    };
+    const mergePreview = (existing?: Message['replies']) =>
+      [previewEntry, ...(existing || []).filter(r => r.author.id !== reply.author.id)].slice(0, 3);
+
+    setMessages(prev => prev.map(m => m.id === reply.replyToId ? {
+      ...m,
+      _count: { replies: (m._count?.replies ?? 0) + 1 },
+      replies: mergePreview(m.replies),
+    } : m));
+
+    setActiveThread(prev => prev && prev.id === reply.replyToId ? {
+      ...prev,
+      _count: { replies: (prev._count?.replies ?? 0) + 1 },
+      replies: mergePreview(prev.replies),
+    } : prev);
+
+    const isOwnMessage = parentSnapshot?.author.id === currentUser.id;
+    if (
+      isOwnMessage &&
+      reply.author.id !== currentUser.id &&
+      activeThreadRef.current?.id !== reply.replyToId
+    ) {
+      const updatedParent = parentSnapshot ? {
+        ...parentSnapshot,
+        _count: { replies: (parentSnapshot._count?.replies ?? 0) + 1 },
+        replies: mergePreview(parentSnapshot.replies),
+      } : null;
+
+      toast({
+        title: `${reply.author.name || reply.author.username} replied to you`,
+        description: reply.content?.slice(0, 140) || 'Sent an attachment',
+        action: updatedParent ? (
+          <ToastAction altText="View thread" onClick={() => openThreadPanel(updatedParent)}>
+            View thread
+          </ToastAction>
+        ) : undefined,
+      });
+    }
+  }, [currentUser.id, toast, openThreadPanel]);
+
+  const updateMessagePoll = useCallback((messageId: string, poll: ChatPoll) => {
+    setMessages(prev => prev.map(message => message.id === messageId ? { ...message, poll } : message));
+    setActiveThread(prev => prev && prev.id === messageId ? { ...prev, poll } : prev);
+  }, []);
+
+  const updateMessagePinned = useCallback((messageId: string, isPinned: boolean, pinnedAt: string | null) => {
+    setMessages(prev => prev.map(message => message.id === messageId ? { ...message, isPinned, pinnedAt } : message));
+    setActiveThread(prev => prev && prev.id === messageId ? { ...prev, isPinned, pinnedAt } : prev);
+  }, []);
+
+  const handlePollVote = async (messageId: string, pollId: string, optionId: string) => {
+    const message = messagesRef.current.find(item => item.id === messageId);
+    if (!message?.poll || message.poll.isClosed) return;
+
+    const previousPoll = message.poll;
+    let totalVotes = previousPoll.totalVotes;
+    const options = previousPoll.options.map(option => {
+      let voteCount = option.voteCount;
+      let myVote = option.myVote;
+
+      if (previousPoll.allowMultiple) {
+        if (option.id === optionId) {
+          voteCount += myVote ? -1 : 1;
+          totalVotes += myVote ? -1 : 1;
+          myVote = !myVote;
+        }
+      } else if (option.id === optionId) {
+        voteCount += myVote ? -1 : 1;
+        totalVotes += myVote ? -1 : 1;
+        myVote = !myVote;
+      } else if (myVote) {
+        voteCount -= 1;
+        totalVotes -= 1;
+        myVote = false;
+      }
+
+      return { ...option, voteCount: Math.max(0, voteCount), myVote };
+    });
+
+    updateMessagePoll(messageId, {
+      ...previousPoll,
+      options,
+      totalVotes: Math.max(0, totalVotes),
+      isClosed: previousPoll.isClosed,
+    });
+
+    try {
+      const response = await fetch(`/api/chat/polls/${pollId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optionId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.poll) {
+        throw new Error(data?.error || "Vote failed");
+      }
+
+      updateMessagePoll(messageId, data.poll);
+      const counts: Record<string, number> = {};
+      for (const option of data.poll.options) {
+        counts[option.id] = option.voteCount;
+      }
+      socket?.emit("poll-updated", {
+        workspaceId: channelId || groupId || workspace.id,
+        messageId,
+        counts,
+        totalVotes: data.poll.totalVotes,
+        isClosed: data.poll.isClosed,
+      });
+    } catch (error) {
+      updateMessagePoll(messageId, previousPoll);
+      toast({
+        title: "Could not save your vote",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePinMessage = async (message: Message) => {
+    const nextPinned = !message.isPinned;
+    updateMessagePinned(message.id, nextPinned, nextPinned ? new Date().toISOString() : null);
+
+    try {
+      const response = await fetch(`/api/chat/messages/${message.id}/pin`, { method: "POST" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not update pin");
+      }
+
+      updateMessagePinned(message.id, data.isPinned, data.pinnedAt);
+      socket?.emit("message-pinned", {
+        workspaceId: channelId || groupId || workspace.id,
+        messageId: message.id,
+        isPinned: data.isPinned,
+        pinnedAt: data.pinnedAt,
+      });
+
+      toast({
+        title: data.isPinned ? "Pinned to the channel brief" : "Decision unpinned",
+        description: data.isPinned ? "It now appears under Pinned decisions." : undefined,
+      });
+    } catch (error) {
+      updateMessagePinned(message.id, Boolean(message.isPinned), message.pinnedAt ?? null);
+      toast({
+        title: "Could not update the pin",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExternalMessage = useCallback((message: Message) => {
+    if (message.replyToId) return;
+    setMessages(prev => prev.some(item => item.id === message.id) ? prev : [...prev, message]);
+  }, []);
+
   // Listen for new messages
   useEffect(() => {
     if (!socket) return;
@@ -168,6 +462,11 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
     console.log('🔌 ChatArea socket listener registered for current user:', currentUser.username, 'in room:', groupId || workspace.id);
 
     const handleNewMessage = (message: Message & { tempId?: string }) => {
+      if (message.replyToId) {
+        registerReply(message);
+        return;
+      }
+
       console.log('📩 ChatArea received new-message:', message);
       setMessages(prev => {
         // If this real message is replacing an optimistic broadcast
@@ -214,8 +513,8 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
       }));
     };
 
-    const handleUserTyping = (data: { userId: string; username: string; isTyping: boolean }) => {
-      console.log('📩 ChatArea received user-typing:', data, 'current user ID:', currentUser.id);
+    const handleUserTyping = (data: { userId: string; username: string; isTyping: boolean; threadId?: string }) => {
+      if (data.threadId) return; // Thread typing is shown inside the thread panel
       if (data.userId === currentUser.id) return; // Ignore our own typing indicator
 
       setTypingUsers(prev => {
@@ -230,19 +529,42 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
       });
     };
 
+    const handlePresenceList = (users: Array<{ userId: string; username: string }>) => {
+      setOnlineUsers(Array.from(new Set(users.map(user => user.userId))));
+    };
+
     const handleMessageEdited = (editedMessage: Message) => {
       console.log('📩 ChatArea received message-edited:', editedMessage);
       setMessages(prev => prev.map(m => m.id === editedMessage.id ? editedMessage : m));
+      setActiveThread(prev => prev && prev.id === editedMessage.id ? { ...prev, ...editedMessage } : prev);
     };
 
     const handleMessageDeleted = (messageId: string) => {
       console.log('📩 ChatArea received message-deleted:', messageId);
+      const parentId = replyParentMap.current.get(messageId);
+
       setMessages(prev => prev.map(m => {
         if (m.id === messageId) {
           return { ...m, isDeleted: true, content: "This message was deleted." };
         }
+        if (parentId && m.id === parentId) {
+          return {
+            ...m,
+            _count: { replies: Math.max(0, (m._count?.replies ?? 1) - 1) },
+            replies: (m.replies || []).filter(reply => reply.id !== messageId),
+          };
+        }
         return m;
       }));
+
+      if (parentId) {
+        replyParentMap.current.delete(messageId);
+        setActiveThread(prev => prev && prev.id === parentId ? {
+          ...prev,
+          _count: { replies: Math.max(0, (prev._count?.replies ?? 1) - 1) },
+          replies: (prev.replies || []).filter(reply => reply.id !== messageId),
+        } : prev);
+      }
     };
 
     const handleMessagesRead = (data: { messageIds: string[]; readByUserId: string }) => {
@@ -264,23 +586,60 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
       }));
     };
 
+    const applyPollUpdate = (poll: ChatPoll | null | undefined, data: { counts: Record<string, number>; totalVotes: number; isClosed: boolean }) => {
+      if (!poll) return poll;
+      return {
+        ...poll,
+        options: poll.options.map(option => ({
+          ...option,
+          voteCount: data.counts[option.id] ?? option.voteCount,
+        })),
+        totalVotes: data.totalVotes,
+        isClosed: data.isClosed,
+      };
+    };
+
+    const handlePollUpdated = (data: { messageId: string; counts: Record<string, number>; totalVotes: number; isClosed: boolean }) => {
+      setMessages(prev => prev.map(message => message.id === data.messageId
+        ? { ...message, poll: applyPollUpdate(message.poll, data) }
+        : message));
+      setActiveThread(prev => prev && prev.id === data.messageId
+        ? { ...prev, poll: applyPollUpdate(prev.poll, data) }
+        : prev);
+    };
+
+    const handleMessagePinned = (data: { messageId: string; isPinned: boolean; pinnedAt?: string | null }) => {
+      setMessages(prev => prev.map(message => message.id === data.messageId
+        ? { ...message, isPinned: data.isPinned, pinnedAt: data.pinnedAt ?? null }
+        : message));
+      setActiveThread(prev => prev && prev.id === data.messageId
+        ? { ...prev, isPinned: data.isPinned, pinnedAt: data.pinnedAt ?? null }
+        : prev);
+    };
+
     socket.on('new-message', handleNewMessage);
     socket.on('reaction-updated', handleReactionUpdated);
     socket.on('user-typing', handleUserTyping);
+    socket.on('presence-list', handlePresenceList);
     socket.on('message-edited', handleMessageEdited);
     socket.on('message-deleted', handleMessageDeleted);
     socket.on('messages-read', handleMessagesRead);
+    socket.on('poll-updated', handlePollUpdated);
+    socket.on('message-pinned', handleMessagePinned);
 
     return () => {
       console.log('🔌 ChatArea socket listener cleaning up');
       socket.off('new-message', handleNewMessage);
       socket.off('reaction-updated', handleReactionUpdated);
       socket.off('user-typing', handleUserTyping);
+      socket.off('presence-list', handlePresenceList);
       socket.off('message-edited', handleMessageEdited);
       socket.off('message-deleted', handleMessageDeleted);
       socket.off('messages-read', handleMessagesRead);
+      socket.off('poll-updated', handlePollUpdated);
+      socket.off('message-pinned', handleMessagePinned);
     };
-  }, [socket, currentUser.id, currentUser.username, groupId, workspace.id]);
+  }, [socket, currentUser.id, currentUser.username, groupId, workspace.id, registerReply]);
 
   // Instantly mark live messages as read when received
   useEffect(() => {
@@ -291,7 +650,7 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
       console.log('⚡ ChatArea auto-reading messages:', idsToMark);
       
       // Emit socket event and call API
-      socket?.emit('messages-read', { workspaceId: groupId || workspace.id, messageIds: idsToMark, readByUserId: currentUser.id });
+      socket?.emit('messages-read', { workspaceId: channelId || groupId || workspace.id, messageIds: idsToMark, readByUserId: currentUser.id });
       fetch('/api/chat/messages/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -312,7 +671,7 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
     const currentReactions = message.reactions || [];
     const hasReacted = currentReactions.some(r => r.emoji === emoji && r.user.username === currentUser.username);
 
-    const roomId = groupId || workspace.id;
+    const roomId = channelId || groupId || workspace.id;
     const status = hasReacted ? 'removed' : 'added';
 
     console.log(`⚡ ChatArea emitting reaction-updated:`, { workspaceId: roomId, messageId, emoji, status });
@@ -336,10 +695,16 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
   };
 
   const handleOptimisticMessage = (message: Message) => {
+    if (message.replyToId) return;
     setMessages(prev => [...prev, message]);
   };
 
   const handleMessageConfirmed = (tempId: string, realMessage: Message) => {
+    if (realMessage.replyToId) {
+      registerReply(realMessage);
+      return;
+    }
+
     setMessages(prev => {
       // Check if the real message already exists (e.g. came from socket before API response)
       const exists = prev.some(m => m.id === realMessage.id);
@@ -354,12 +719,43 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
     });
   };
 
+  const handleMessageFailed = (tempId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== tempId));
+  };
+
+  const conversationTitle = channelName
+    ? `# ${channelName}`
+    : groupId
+      ? "Group conversation"
+      : workspace.name;
+
+  const copyChannelLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({ title: "Link copied", description: "Share it with a workspace member." });
+    } catch {
+      toast({
+        title: "Could not copy the link",
+        description: "Copy the address from your browser instead.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Header */}
       <div className="bg-background border-b border-border px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center min-w-0 flex-1">
+            <Link
+              href={`/${locale}/dashboard/chat`}
+              className="mr-2 inline-flex h-8 w-8 shrink-0 items-center justify-center border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label="Back to conversations"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </Link>
+
             {/* Mobile menu button */}
             {onOpenMobileMenu && (
               <Button
@@ -380,56 +776,135 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-semibold text-foreground truncate">
-                {workspace.name}
+                {channelName ? `# ${channelName}` : workspace.name}
               </h1>
               <p className="text-sm text-muted-foreground flex items-center">
                 <Users className="w-3 h-3 mr-1 flex-shrink-0" />
-                <span className="truncate">{workspace._count.subscribers} members</span>
+                <span className="truncate">
+                  {channelName ? `${workspace.name} · ` : ""}
+                  {workspace._count.subscribers} {workspace._count.subscribers === 1 ? "member" : "members"}
+                </span>
+                {onlineUsers.length > 0 && (
+                  <span className="ml-2 inline-flex shrink-0 items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {onlineUsers.length} online
+                  </span>
+                )}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <ChatSearch workspaceId={workspace.id} groupId={groupId} currentUser={currentUser} />
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-foreground hover:bg-accent p-1"
+              onClick={() => briefOpen ? setBriefOpen(false) : openBriefPanel()}
+              aria-label="Channel brief"
+              title="Channel brief"
+              className={cn("p-1 text-muted-foreground hover:bg-accent hover:text-foreground", briefOpen && "bg-secondary text-foreground")}
             >
-              <MoreVertical className="w-4 h-4" />
+              <ClipboardList className="w-4 h-4" />
             </Button>
+            {channelId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => dsaOpen ? setDsaOpen(false) : openDsaPanel()}
+                aria-label="DSA co-working room"
+                title="DSA co-working room"
+                className={cn("p-1 text-muted-foreground hover:bg-accent hover:text-foreground", dsaOpen && "bg-secondary text-foreground")}
+              >
+                <Brain className="w-4 h-4" />
+              </Button>
+            )}
+            <ChatSearch workspaceId={workspace.id} groupId={groupId} currentUser={currentUser} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Channel options"
+                  className="text-muted-foreground hover:text-foreground hover:bg-accent p-1"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="truncate text-[10px] font-medium tracking-wide text-muted-foreground">
+                  {conversationTitle}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={openBriefPanel}
+                >
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  Channel brief
+                </DropdownMenuItem>
+                {channelId && (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2"
+                    onSelect={openDsaPanel}
+                  >
+                    <Brain className="h-4 w-4 text-muted-foreground" />
+                    DSA co-working room
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={() => setDetailsOpen(true)}
+                >
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                  {channelName ? "Channel details" : "Conversation details"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onSelect={copyChannelLink}
+                >
+                  <Link2 className="h-4 w-4 text-muted-foreground" />
+                  Copy channel link
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer gap-2">
+                  <Link
+                    href={`/${locale}/dashboard/workspace/${workspace.id}`}
+                    className="flex w-full items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    View workspace
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="relative flex-1 flex min-h-0 overflow-hidden">
         {/* Main Chat */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {dsaRoom && !dsaOpen && (
+            <DsaRoomBanner room={dsaRoom} onOpen={openDsaPanel} />
+          )}
           <MessageList 
             messages={messages.filter(m => !m.replyToId)} 
             isLoading={isLoading} 
             currentUser={currentUser}
-            onReply={(msg) => {
-              if (currentUser.plan === 'FREE') {
-                alert("Threaded replies are a premium feature! Please upgrade your plan to access this feature.");
-                // Redirect to upgrade page if possible, or show a custom modal.
-                // For now, an alert followed by navigation using window.location
-                window.location.href = '/upgrade';
-                return;
-              }
-              setActiveThread(msg);
-            }}
+            workspaceId={workspace.id}
+            onReply={openThreadPanel}
             onReactionToggle={handleReactionToggle}
             setMessages={setMessages}
+            onVote={handlePollVote}
+            onPinMessage={handlePinMessage}
             onMessageEdit={(msg) => {
-              socket?.emit('message-edited', { workspaceId: groupId || workspace.id, message: msg });
+              socket?.emit('message-edited', { workspaceId: channelId || groupId || workspace.id, message: msg });
             }}
             onMessageDelete={(msgId) => {
-              socket?.emit('message-deleted', { workspaceId: groupId || workspace.id, messageId: msgId });
+              socket?.emit('message-deleted', { workspaceId: channelId || groupId || workspace.id, messageId: msgId });
             }}
             onMessagesRead={(msgIds) => {
-              socket?.emit('messages-read', { workspaceId: groupId || workspace.id, messageIds: msgIds, readByUserId: currentUser.id });
+              socket?.emit('messages-read', { workspaceId: channelId || groupId || workspace.id, messageIds: msgIds, readByUserId: currentUser.id });
               fetch('/api/chat/messages/read', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -463,10 +938,14 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
             onCancelReply={() => setReplyingTo(null)}
             onOptimisticMessage={handleOptimisticMessage}
             onMessageConfirmed={handleMessageConfirmed}
+            onMessageFailed={handleMessageFailed}
+            onExternalMessage={handleExternalMessage}
+            onOpenBrief={openBriefPanel}
+            onOpenDsaRoom={channelId ? openDsaPanel : undefined}
           />
         </div>
         {activeThread && (
-          <div className="w-80 flex-shrink-0 border-l border-border bg-background shadow-lg">
+          <div className="absolute inset-y-0 right-0 z-30 w-full border-l border-border bg-background shadow-lg animate-in slide-in-from-right-4 duration-200 sm:static sm:z-auto sm:w-[420px] sm:flex-shrink-0">
             <ThreadSidebar
               parentMessage={activeThread}
               workspaceId={workspace.id}
@@ -477,7 +956,104 @@ export function ChatArea({ workspace, currentUser, groupId, channelId, onOpenMob
             />
           </div>
         )}
+        {briefOpen && !activeThread && (
+          <div className="absolute inset-y-0 right-0 z-30 w-full border-l border-border bg-background shadow-lg animate-in slide-in-from-right-4 duration-200 sm:static sm:z-auto sm:w-[420px] sm:flex-shrink-0">
+            <ChannelBrief
+              workspaceId={workspace.id}
+              groupId={groupId}
+              channelId={channelId}
+              title={conversationTitle}
+              onlineCount={onlineUsers.length}
+              onClose={() => setBriefOpen(false)}
+              onOpenThread={openThreadPanel}
+              onOpenDsaRoom={channelId ? openDsaPanel : () => {}}
+            />
+          </div>
+        )}
+        {dsaOpen && channelId && !activeThread && !briefOpen && (
+          <div className="absolute inset-y-0 right-0 z-30 w-full border-l border-border bg-background shadow-lg animate-in slide-in-from-right-4 duration-200 sm:static sm:z-auto sm:w-[420px] sm:flex-shrink-0">
+            <DsaRoomPanel
+              workspaceId={workspace.id}
+              channelId={channelId}
+              currentUser={currentUser}
+              onClose={() => {
+                setDsaOpen(false);
+                refreshDsaRoom();
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{conversationTitle}</DialogTitle>
+            <DialogDescription>
+              Conversation details for this workspace.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-px border border-border bg-border">
+            <div className="flex items-center justify-between gap-4 bg-card px-4 py-3 text-[12px]">
+              <span className="text-muted-foreground">Workspace</span>
+              <span className="truncate">{workspace.name}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 bg-card px-4 py-3 text-[12px]">
+              <span className="text-muted-foreground">
+                {channelName ? "Channel" : groupId ? "Group" : "Space"}
+              </span>
+              <span className="truncate">{conversationTitle}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 bg-card px-4 py-3 text-[12px]">
+              <span className="text-muted-foreground">Members</span>
+              <span>{workspace._count.subscribers}</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="eyebrow mb-2">People</p>
+            <div className="max-h-60 divide-y divide-border overflow-y-auto border border-border">
+              {workspace.subscribers.slice(0, 24).map((member) => (
+                <div
+                  key={member.user.id}
+                  className="flex items-center gap-3 bg-card px-4 py-2.5"
+                >
+                  <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-medium">
+                    {(member.user.name || member.user.username)
+                      .charAt(0)
+                      .toUpperCase()}
+                    {onlineUsers.includes(member.user.id) && (
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-background bg-emerald-500"
+                        aria-label="Online"
+                      />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px]">
+                      {member.user.name || member.user.username}
+                      {member.user.id === currentUser.id && (
+                        <span className="ml-1.5 text-[10px] text-primary">
+                          (you)
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
+                      @{member.user.username}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {workspace._count.subscribers > 24 && (
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                Showing the first 24 of {workspace._count.subscribers} members.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

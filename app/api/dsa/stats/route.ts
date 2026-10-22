@@ -15,134 +15,81 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // Get overall progress statistics - ONLY for curated questions (isImported: false)
-    const [
-      totalQuestions,
-      userProgress,
-      topicProgress,
-      difficultyProgress,
-      recentActivity
-    ] = await Promise.all([
-      // Total curated questions available (excluding imported ones)
-      db.dSAQuestion.count({
-        where: {
-          isImported: false
-        }
-      }),
-      
-      // User's progress on curated questions only
-      db.dSAProgress.groupBy({
-        by: ['status'],
-        where: {
-          userId: userId,
-          question: {
-            isImported: false
-          }
-        },
-        _count: {
-          status: true
-        }
-      }),
-      
-      // Progress by topic - curated questions only
-      db.dSAProgress.findMany({
-        where: {
-          userId: userId,
-          question: {
-            isImported: false
-          }
-        },
-        include: {
-          question: {
-            select: {
-              topic: true,
-              difficulty: true
-            }
-          }
-        }
-      }),
-      
-      // Progress by difficulty - curated questions only
-      db.dSAProgress.groupBy({
-        by: ['status'],
-        where: {
-          userId: userId,
-          question: {
-            isImported: false
-          }
-        },
-        _count: {
-          status: true
-        }
-      }),
-      
-      // Recent activity (last 7 days) - curated questions only
-      db.dSAProgress.findMany({
-        where: {
-          userId: userId,
-          updatedAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+    const [totalQuestions, questionGroups, progressRows, streak] =
+      await Promise.all([
+        db.dSAQuestion.count({ where: { isImported: false } }),
+        db.dSAQuestion.groupBy({
+          by: ["topic", "difficulty"],
+          where: { isImported: false },
+          _count: { _all: true },
+        }),
+        db.dSAProgress.findMany({
+          where: {
+            userId,
+            question: { isImported: false },
           },
-          question: {
-            isImported: false
-          }
-        },
-        include: {
-          question: {
-            select: {
-              title: true,
-              topic: true,
-              difficulty: true
-            }
-          }
-        },
-        orderBy: {
-          updatedAt: 'desc'
-        },
-        take: 5 // Limit to 5 recent activities for performance
-      })
-    ]);
+          select: {
+            id: true,
+            status: true,
+            updatedAt: true,
+            question: {
+              select: { title: true, topic: true, difficulty: true },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
+        calculateStreak(userId),
+      ]);
 
-    // Process the data
     const total = totalQuestions;
-    const solved = userProgress.find(p => p.status === 'COMPLETED')?._count.status || 0;
-    const inProgress = userProgress.find(p => p.status === 'IN_PROGRESS')?._count.status || 0;
-    const todo = userProgress.find(p => p.status === 'TODO')?._count.status || 0;
-    const completionPercentage = total > 0 ? Math.round((solved / total) * 100) : 0;
+    const solved = progressRows.filter((p) => p.status === "COMPLETED").length;
+    const inProgress = progressRows.filter(
+      (p) => p.status === "IN_PROGRESS"
+    ).length;
+    const todo = Math.max(0, total - solved - inProgress);
+    const completionPercentage =
+      total > 0 ? Math.round((solved / total) * 100) : 0;
 
-    // Group by topic
-    const topics: Record<string, { solved: number; total: number; inProgress: number }> = {};
-    topicProgress.forEach(progress => {
-      const topic = progress.question.topic;
-      if (!topics[topic]) {
-        topics[topic] = { solved: 0, total: 0, inProgress: 0 };
+    const topics: Record<
+      string,
+      { solved: number; total: number; inProgress: number }
+    > = {};
+    const difficulty: Record<
+      string,
+      { solved: number; total: number; inProgress: number }
+    > = {};
+
+    questionGroups.forEach((group) => {
+      if (!topics[group.topic]) {
+        topics[group.topic] = { solved: 0, total: 0, inProgress: 0 };
       }
-      if (progress.status === 'COMPLETED') {
-        topics[topic].solved++;
-      } else if (progress.status === 'IN_PROGRESS') {
-        topics[topic].inProgress++;
+      if (!difficulty[group.difficulty]) {
+        difficulty[group.difficulty] = { solved: 0, total: 0, inProgress: 0 };
       }
-      topics[topic].total++;
+      topics[group.topic].total += group._count._all;
+      difficulty[group.difficulty].total += group._count._all;
     });
 
-    // Group by difficulty
-    const difficulty: Record<string, { solved: number; total: number; inProgress: number }> = {};
-    difficultyProgress.forEach(progress => {
-      const diff = progress.status;
-      if (!difficulty[diff]) {
-        difficulty[diff] = { solved: 0, total: 0, inProgress: 0 };
+    progressRows.forEach((progress) => {
+      const topic = topics[progress.question.topic];
+      const diff = difficulty[progress.question.difficulty];
+
+      if (progress.status === "COMPLETED") {
+        if (topic) topic.solved++;
+        if (diff) diff.solved++;
+      } else if (progress.status === "IN_PROGRESS") {
+        if (topic) topic.inProgress++;
+        if (diff) diff.inProgress++;
       }
-      difficulty[diff].total++;
     });
 
-    // Process recent activity
-    const recentActivityData = recentActivity.map(activity => ({
+    const recentActivityData = progressRows.slice(0, 5).map((activity) => ({
       id: activity.id,
       questionTitle: activity.question.title,
       topic: activity.question.topic,
       difficulty: activity.question.difficulty,
       status: activity.status,
-      updatedAt: activity.updatedAt.toISOString()
+      updatedAt: activity.updatedAt.toISOString(),
     }));
 
     const stats = {
@@ -151,19 +98,16 @@ export async function GET(req: NextRequest) {
         solved,
         inProgress,
         todo,
-        completionPercentage
+        completionPercentage,
       },
       topics,
       difficulty,
       recentActivity: recentActivityData,
-      streak: 0 // Placeholder for streak calculation
+      streak,
     };
 
-    // Add caching headers for better performance
     const response = NextResponse.json(stats, { status: 200 });
-    response.headers.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes
-    response.headers.set('Vary', 'Authorization'); // Vary by user
-    
+    response.headers.set("Cache-Control", "private, no-store");
     return response;
   } catch (error) {
     console.error('Error fetching DSA stats:', error);

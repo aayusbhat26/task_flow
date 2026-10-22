@@ -82,7 +82,7 @@ export const EditorWorkspaceDataForm = ({
   };
 
   const { toast } = useToast();
-  const m = useTranslations("MESSAGE");
+  const m = useTranslations("MESSAGES");
   const router = useRouter();
 
   const { mutate: editWorkspaceData, isPending } = useMutation({

@@ -9,7 +9,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { HoverCard, HoverCardContent } from "../ui/hover-card";
 import { Button } from "../ui/button";
 import { Trash } from "lucide-react";
 import Warning from "../ui/warning";
@@ -62,19 +61,18 @@ export const DeleteAllNodes = ({ workspaceId, mindMapId }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <HoverCard openDelay={250} closeDelay={250}>
-        <DialogTrigger>
-          <Button
-            disabled={!getNodes().length || status !== "saved"}
-            onClick={() => setOpen(true)}
-            variant={"ghost"}
-            size={"icon"}
-          >
-            <Trash size={22} />
-          </Button>
-        </DialogTrigger>
-        <HoverCardContent align="start">{t("HOVER")}</HoverCardContent>
-        <DialogContent>
+      <DialogTrigger asChild>
+        <Button
+          disabled={!getNodes().length || status !== "saved"}
+          variant="ghost"
+          size="icon"
+          title={t("HOVER")}
+          aria-label={t("HOVER")}
+        >
+          <Trash size={18} />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("DIALOG.TITLE")}</DialogTitle>
             <DialogDescription>{t("DIALOG.DESC")}</DialogDescription>
@@ -94,8 +92,7 @@ export const DeleteAllNodes = ({ workspaceId, mindMapId }: Props) => {
               )}
             </Button>
           </DialogHeader>
-        </DialogContent>
-      </HoverCard>
+      </DialogContent>
     </Dialog>
   );
 };

@@ -1,5 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { getServerSession, NextAuthOptions } from "next-auth";
+import { cache } from "react";
 import { db } from "./db";
 import { Adapter } from "next-auth/adapters";
 import GoogleProvider from "next-auth/providers/google";
@@ -10,22 +11,14 @@ import bcrypt from "bcrypt";
 import { generateFromEmail } from "unique-username-generator";
 import { userService } from "./userService";
 
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-  },
-  pages: {
-    error: "/sign-in",
-    signIn: "/sign-in",
-  },
-  adapter: PrismaAdapter(db) as Adapter,
-  providers: [
+const providers: NextAuthOptions["providers"] = [];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      httpOptions: {
-        timeout: 10000,
-      },
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      httpOptions: { timeout: 10000 },
       async profile(profile) {
         const username = generateFromEmail(profile.email, 5);
         return {
@@ -37,13 +30,18 @@ export const authOptions: NextAuthOptions = {
           image: profile.picture,
         };
       },
-    }),
+    })
+  );
+}
+
+if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+  providers.push(
     GithubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
       async profile(profile) {
         const username = generateFromEmail(profile.email, 5);
-        const fullName = profile.name.split(" ");
+        const fullName = profile.name?.split(" ") ?? [];
         return {
           id: profile.id,
           username: profile.login ? profile.login : username,
@@ -53,83 +51,69 @@ export const authOptions: NextAuthOptions = {
           image: profile.avatar_url,
         };
       },
-    }),
+    })
+  );
+}
+
+if (process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) {
+  providers.push(
     AppleProvider({
-      clientId: process.env.APPLE_CLIENT_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        username: { label: "Username", type: "text", placeholder: "Username" },
-        email: { label: "Email", type: "text", placeholder: "Email" },
-        password: {
-          label: "Password",
-          type: "password",
-          placeholder: "Password",
-        },
+      clientId: process.env.APPLE_CLIENT_ID,
+      clientSecret: process.env.APPLE_CLIENT_SECRET,
+    })
+  );
+}
+
+providers.push(
+  CredentialsProvider({
+    name: "credentials",
+    credentials: {
+      email: { label: "Email", type: "text", placeholder: "Email" },
+      password: {
+        label: "Password",
+        type: "password",
+        placeholder: "Password",
       },
-      async authorize(credentials, req) {
-        if (!credentials?.email || !credentials.password) {
-          throw new Error("Please enter email and password.");
-        }
+    },
+    async authorize(credentials) {
+      if (!credentials?.email || !credentials.password) {
+        throw new Error("Please enter email and password.");
+      }
 
-        try {
-          const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-          const res = await fetch(`${baseUrl}/api/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          });
-          const response = await res.json();
-          if (!res.ok || !response.user) {
-            throw new Error(response.message || "Authentication failed");
-          }
-          const user = response.user;
-          return {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            name: user.firstName || user.username,
-            surname: user.lastName || "",
-            image: user.profileImage,
-          };
-        } catch (error) {
-          // Fallback to database check for existing users
-          const user = await db.user.findUnique({
-            where: {
-              email: credentials.email,
-            },
-          });
-          console.log("[NextAuth] DB user:", user);
+      const user = await db.user.findUnique({
+        where: { email: credentials.email.toLowerCase().trim() },
+      });
 
-          if (!user || !user?.hashedPassword) {
-            console.log("[NextAuth] User not found or missing password");
-            throw new Error("User was not found, Please enter valid email");
-          }
+      if (!user?.hashedPassword) {
+        throw new Error("User was not found, please enter a valid email.");
+      }
 
-          const passwordMatch = await bcrypt.compare(
-            credentials.password,
-            user.hashedPassword
-          );
-          console.log("[NextAuth] Password match:", passwordMatch);
+      const passwordMatch = await bcrypt.compare(
+        credentials.password,
+        user.hashedPassword
+      );
 
-          if (!passwordMatch) {
-            console.log("[NextAuth] Incorrect password");
-            throw new Error(
-              "The entered password is incorrect, please enter the correct one."
-            );
-          }
+      if (!passwordMatch) {
+        throw new Error(
+          "The entered password is incorrect, please try again."
+        );
+      }
 
-          console.log("[NextAuth] Returning DB user:", user);
-          return user;
-        }
-      },
-    }),
-  ],
+      return user;
+    },
+  })
+);
+
+export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: "jwt",
+  },
+  pages: {
+    error: "/sign-in",
+    signIn: "/sign-in",
+  },
+  adapter: PrismaAdapter(db) as Adapter,
+  providers,
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async session({ session, token }) {
@@ -142,44 +126,77 @@ export const authOptions: NextAuthOptions = {
         session.user.surname = token.surname;
         session.user.completedOnboarding = !!token.completedOnboarding;
         session.user.plan = token.plan as string | undefined;
-      }
-
-      const user = await db.user.findUnique({
-        where: {
-          id: token.id,
-        },
-      });
-
-      if (user) {
-        session.user.image = user.image;
-        session.user.completedOnboarding = user.completedOnboarding;
-        session.user.username = user.username;
-        session.user.plan = user.plan;
+        session.user.planExpiresAt = token.planExpiresAt ?? null;
+        session.user.billingInterval = token.billingInterval ?? null;
       }
 
       return session;
     },
-    async jwt({ token, user }) {
-      const dbUser = await db.user.findFirst({
-        where: {
-          email: token.email,
-        },
-      });
-
-      if (!dbUser) {
-        token.id = user!.id;
-        return token;
+    async jwt({ token, user, trigger }) {
+      if (user) {
+        token.id = user.id;
+        token.username = (user as any).username;
+        token.surname = (user as any).surname;
+        token.picture = user.image;
+        token.completedOnboarding = !!(user as any).completedOnboarding;
+        token.plan = (user as any).plan ?? "FREE";
+        token.planExpiresAt =
+          (user as any).planExpiresAt?.toISOString?.() ?? null;
+        token.billingInterval = (user as any).billingInterval ?? null;
       }
 
-      return {
-        id: dbUser.id,
-        username: dbUser.username,
-        email: dbUser.email,
-        picture: dbUser.image,
-        plan: dbUser.plan,
-      };
+      const needsRefresh =
+        trigger === "update" ||
+        !token.id ||
+        !token.username ||
+        token.completedOnboarding === undefined ||
+        token.plan === undefined ||
+        token.planExpiresAt === undefined;
+
+      if (needsRefresh && token.email) {
+        const dbUser = await db.user.findUnique({
+          where: { email: token.email },
+          select: {
+            id: true,
+            username: true,
+            surname: true,
+            image: true,
+            completedOnboarding: true,
+            plan: true,
+            planExpiresAt: true,
+            billingInterval: true,
+          },
+        });
+
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.username = dbUser.username;
+          token.surname = dbUser.surname;
+          token.picture = dbUser.image;
+          token.completedOnboarding = dbUser.completedOnboarding;
+          token.plan = dbUser.plan;
+          token.planExpiresAt = dbUser.planExpiresAt?.toISOString() ?? null;
+          token.billingInterval = dbUser.billingInterval;
+        }
+      }
+
+      return token;
     },
   },
 };
 
-export const getAuthSession = () => getServerSession(authOptions);
+export const getAuthSession = cache(() => getServerSession(authOptions));
+
+export type OAuthProviderAvailability = {
+  google: boolean;
+  github: boolean;
+};
+
+export const getConfiguredOAuthProviders = (): OAuthProviderAvailability => ({
+  google: Boolean(
+    process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+  ),
+  github: Boolean(
+    process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+  ),
+});

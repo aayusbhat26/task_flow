@@ -3,6 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import dayjs from "dayjs";
 import { Button } from "../ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Props {
   monthIndex: number;
@@ -16,47 +17,46 @@ export const CalendarHeader = ({
   onResetMonthHandler,
 }: Props) => {
   const format = useFormatter();
+  const t = useTranslations("CALENDAR.HEADER");
 
   const dateTime = new Date(dayjs().year(), monthIndex);
 
-  const year = format.dateTime(dateTime, {
-    year: "numeric",
-  });
+  const year = format.dateTime(dateTime, { year: "numeric" });
+  const month = format.dateTime(dateTime, { month: "long" });
 
-  const month = format.dateTime(dateTime, {
-    month: "long",
-  });
-  const t = useTranslations("CALENDAR.HEADER");
   return (
-    <div className="w-full flex flex-col sm:flex-row justify-between items-center">
-      <h1 className="text-xl sm:text-2xl md:text-3xl mb-4 md:mb-0">
-        <span className="font-bold">{month}</span> <span>{year}</span>
-      </h1>
+    <div className="flex w-full flex-col justify-between gap-5 sm:flex-row sm:items-end">
       <div>
+        <p className="eyebrow">Schedule</p>
+        <h1 className="mt-2 font-display text-4xl leading-none sm:text-5xl">
+          {month} <span className="text-muted-foreground">{year}</span>
+        </h1>
+      </div>
+      <div className="flex items-center">
         <Button
-          onClick={() => {
-            onChangeMonthHandler("prev");
-          }}
-          className="rounded-e-none px-2 py-1 h-8 sm:h-10 sm:px-4 sm:py-2"
-          variant={"outline"}
+          onClick={() => onChangeMonthHandler("prev")}
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 rounded-none border-r-0"
+          aria-label="Previous month"
         >
-          {t("PREV")}
+          <ChevronLeft className="h-4 w-4" />
         </Button>
         <Button
           onClick={onResetMonthHandler}
-          className="rounded-e-none px-2 py-1 h-8 sm:h-10 sm:px-4 sm:py-2"
-          variant={"outline"}
+          variant="outline"
+          className="h-9 rounded-none border-r-0 px-3 text-xs"
         >
           {t("TODAY")}
         </Button>
         <Button
-          onClick={() => {
-            onChangeMonthHandler("next");
-          }}
-          className="rounded-e-none px-2 py-1 h-8 sm:h-10 sm:px-4 sm:py-2"
-          variant={"outline"}
+          onClick={() => onChangeMonthHandler("next")}
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 rounded-none"
+          aria-label="Next month"
         >
-          {t("NEXT")}
+          <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const password = z
   .string()
-  .refine((password) => password.length >= 6, {
+  .refine((password) => password.length >= 10, {
     message: "SCHEMA.PASSWORD.MIN",
   })
   .refine((password) => /[A-Z]/.test(password), {

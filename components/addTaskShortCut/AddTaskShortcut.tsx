@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { ChevronLeft, ExternalLink, PencilRuler } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useChangeCodeToEmoji } from "@/hooks/useChangeCodeToEmoji";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +40,7 @@ export const AddTaskShortcut = ({ userId }: Props) => {
   const [open, setOpen] = useState(false);
   const m = useTranslations("MESSAGES");
   const t = useTranslations("TASK_SHORTCUT");
+  const locale = useLocale();
 
   const {
     data: workspaces,
@@ -131,7 +132,7 @@ export const AddTaskShortcut = ({ userId }: Props) => {
       });
 
       setNewTaskLink(
-        `/dashboard/workspace/${data.workspaceId}/tasks/task/${data.id}/edit`
+        `/${locale}/dashboard/workspace/${data.workspaceId}/tasks/task/${data.id}/edit`
       );
       setTitle("");
       setSelectedEmoji("1f9e0");

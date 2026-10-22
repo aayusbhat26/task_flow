@@ -3,7 +3,7 @@
 import ActiveLink from "@/components/ui/active-link";
 import { Workspace } from "@prisma/client";
 import { LockKeyhole, SunMoon, User2, Volume2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { SettingsWorkspace } from "./SettingsWorkspace";
 
 const settingsFields = [
@@ -35,20 +35,21 @@ interface Props {
 
 export const Settings = ({ userAdminWorkspaces }: Props) => {
   const t = useTranslations("SIDEBAR");
+  const locale = useLocale();
   return (
     <div className="flex flex-col gap-6 w-full">
       <div>
         <p className="text-xs sm:text-sm uppercase text-muted-foreground">
           {t("SETTINGS.GENERAL")}
         </p>
-        <div className="flex flex-col gap-2 w-full mt-2">
+        <div className="flex w-full flex-col gap-0.5">
           {settingsFields.map((settingField, i) => (
             <ActiveLink
               key={i}
-              href={settingField.href}
+              href={`/${locale}${settingField.href}`}
               variant={"ghost"}
               size={"sm"}
-              className="flex justify-start w-full items-center gap-2"
+              className="h-8 w-full justify-start gap-2 px-2 text-[13px] text-muted-foreground"
             >
               {settingField.icon}
               {t(settingField.title)}
@@ -61,7 +62,7 @@ export const Settings = ({ userAdminWorkspaces }: Props) => {
         <p className="text-xs sm:text-sm uppercase text-muted-foreground">
           {t("SETTINGS.WORKSPACE")}
         </p>
-        <div className="flex flex-col gap-2 w-full mt-2">
+        <div className="flex w-full flex-col gap-0.5">
           {userAdminWorkspaces.map((workspace) => (
             <SettingsWorkspace
               key={workspace.id}

@@ -5,6 +5,7 @@ import { Workspace } from "@prisma/client";
 import { useMemo } from "react";
 import { CustomColors } from "@prisma/client";
 import Image from "next/image";
+import { useLocale } from "next-intl";
 
 interface Props {
   workspaceFilterParam: string | null;
@@ -19,6 +20,7 @@ export const AssignedToMeWorkspace = ({
   href,
   currentType,
 }: Props) => {
+  const locale = useLocale();
   const workspaceColor = useMemo(() => {
     switch (color) {
       case CustomColors.PURPLE:
@@ -51,7 +53,7 @@ export const AssignedToMeWorkspace = ({
   }, [color]);
   return (
     <ActiveLink
-      href={`${href}?workspace=${id}&type=${currentType}`}
+      href={`/${locale}${href}?workspace=${id}&type=${currentType}`}
       disableActiveStateColor
       variant={"ghost"}
       size={"sm"}

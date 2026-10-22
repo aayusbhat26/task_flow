@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, getRandomColor } from '@/lib/utils';
+import { ChatImage } from './ChatImage';
 
 interface Message {
   id: string;
@@ -36,8 +37,29 @@ interface Message {
   isEdited?: boolean;
   isDeleted?: boolean;
   readByIds?: string[];
+  replyToId?: string | null;
+  _count?: { replies: number };
+  type?: 'TEXT' | 'POLL' | 'TASK' | 'SYSTEM';
+  poll?: ChatPoll | null;
+  task?: ChatTaskCard | null;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  replies?: Array<{
+    id: string;
+    createdAt?: string;
+    author: {
+      id: string;
+      name: string;
+      username: string;
+      image?: string | null;
+    };
+  }>;
 }
-import { FileIcon, ImageIcon, FileTextIcon, Reply, Smile, Edit2, Trash2, X, Check, CheckCheck } from 'lucide-react';
+import { FileIcon, ImageIcon, FileTextIcon, Reply, Smile, Edit2, Trash2, X, Check, CheckCheck, Copy, MessageSquare, ChevronRight, Pin } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import type { ChatPoll, ChatTaskCard } from '@/lib/chat-rich';
+import { PollMessage } from './PollMessage';
+import { TaskMessage } from './TaskMessage';
 
 interface CurrentUser {
   id: string;
@@ -51,19 +73,33 @@ interface MessageListProps {
   messages: Message[];
   isLoading: boolean;
   currentUser: CurrentUser;
+  workspaceId: string;
   onReply?: (message: Message) => void;
   onReactionToggle?: (messageId: string, emoji: string) => void;
   onMessageEdit?: (message: Message) => void;
   onMessageDelete?: (messageId: string) => void;
   onMessagesRead?: (messageIds: string[]) => void;
+  onVote?: (messageId: string, pollId: string, optionId: string) => void;
+  onPinMessage?: (message: Message) => void;
 }
 
-export function MessageList({ messages, isLoading, currentUser, onReply, onReactionToggle, setMessages, onMessageEdit, onMessageDelete, onMessagesRead }: MessageListProps & { setMessages?: any }) {
+export function MessageList({ messages, isLoading, currentUser, workspaceId, onReply, onReactionToggle, setMessages, onMessageEdit, onMessageDelete, onMessagesRead, onVote, onPinMessage }: MessageListProps & { setMessages?: any }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editContent, setEditContent] = React.useState('');
   const [firstUnreadId, setFirstUnreadId] = React.useState<string | null>(null);
+  const { toast } = useToast();
+
+  const copyMessage = async (content?: string | null) => {
+    if (!content) return;
+    try {
+      await navigator.clipboard.writeText(content);
+      toast({ title: 'Message copied' });
+    } catch {
+      toast({ title: 'Could not copy message', variant: 'destructive' });
+    }
+  };
 
   useEffect(() => {
     if (isLoading) {
@@ -279,6 +315,11 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                   const prevMessage = index > 0 ? dayMessages[index - 1] : null;
                   const showAvatar = !prevMessage || prevMessage.author.id !== message.author.id;
                   const isFirstUnread = message.id === firstUnreadId;
+                  const replyCount = message._count?.replies ?? 0;
+                  const isRichMessage = !message.isDeleted && (message.type === 'POLL' || message.type === 'TASK');
+                  const threadParticipants = Array.from(
+                    new Map((message.replies || []).map(reply => [reply.author.id, reply.author])).values()
+                  ).slice(0, 3);
 
                   return (
                     <React.Fragment key={message.id}>
@@ -302,7 +343,7 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                       {showAvatar ? (
                         <Avatar className="w-8 h-8 flex-shrink-0">
                           <AvatarImage
-                            src={message.author.image || ''}
+                            src={message.author.image || undefined}
                             alt={message.author.name}
                           />
                           <AvatarFallback className={cn("text-primary-foreground font-semibold", getRandomColor(message.author.id))}>
@@ -327,6 +368,11 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                                 <span className="text-primary font-normal ml-1 text-xs">(you)</span>
                               )}
                             </span>
+                            {message.isPinned && (
+                              <span className="inline-flex shrink-0 items-center gap-0.5 text-[9px] uppercase tracking-[0.08em] text-amber-600 dark:text-amber-400" title="Pinned decision">
+                                <Pin className="h-2.5 w-2.5" /> Pinned
+                              </span>
+                            )}
                             <span className="text-xs text-muted-foreground hidden sm:inline">
                               {formatTime(message.createdAt)}
                             </span>
@@ -337,13 +383,17 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                           {/* Hover Actions Menu */}
                           {isCurrentUser && !message.isDeleted && (
                             <div className={cn(
-                              "opacity-0 group-hover/message:opacity-100 transition-opacity flex gap-1 -top-4 right-2 bg-popover border border-border rounded shadow-sm absolute p-1 z-10"
+                              "opacity-0 group-hover/message:opacity-100 focus-within:opacity-100 transition-opacity flex gap-1 -top-4 right-2 bg-popover border border-border rounded shadow-sm absolute p-1 z-10"
                             )}>
-                              <button onClick={() => toggleReaction(message.id, '👍')} className="p-1 hover:bg-muted rounded text-sm">👍</button>
-                              <button onClick={() => toggleReaction(message.id, '❤️')} className="p-1 hover:bg-muted rounded text-sm">❤️</button>
-                              <button onClick={() => onReply?.(message)} className="p-1 hover:bg-muted rounded text-muted-foreground"><Reply className="w-4 h-4"/></button>
-                              <button onClick={() => { setEditingId(message.id); setEditContent(message.content || ''); }} className="p-1 hover:bg-muted rounded text-muted-foreground"><Edit2 className="w-4 h-4"/></button>
-                              <button onClick={() => handleDeleteMessage(message.id)} className="p-1 hover:bg-muted rounded text-red-500"><Trash2 className="w-4 h-4"/></button>
+                              <button onClick={() => toggleReaction(message.id, '👍')} title="React with 👍" aria-label="React with thumbs up" className="p-1 hover:bg-muted rounded text-sm">👍</button>
+                              <button onClick={() => toggleReaction(message.id, '❤️')} title="React with ❤️" aria-label="React with heart" className="p-1 hover:bg-muted rounded text-sm">❤️</button>
+                              <button onClick={() => onReply?.(message)} title="Reply in thread" aria-label="Reply in thread" className="p-1 hover:bg-muted rounded text-muted-foreground"><Reply className="w-4 h-4"/></button>
+                              <button onClick={() => copyMessage(message.content)} title="Copy text" aria-label="Copy message text" className="p-1 hover:bg-muted rounded text-muted-foreground"><Copy className="w-4 h-4"/></button>
+                              <button onClick={() => onPinMessage?.(message)} title={message.isPinned ? "Unpin decision" : "Pin as decision"} aria-label={message.isPinned ? "Unpin decision" : "Pin as decision"} className={cn("p-1 hover:bg-muted rounded", message.isPinned ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}><Pin className="w-4 h-4"/></button>
+                              {!isRichMessage && (
+                                <button onClick={() => { setEditingId(message.id); setEditContent(message.content || ''); }} title="Edit message" aria-label="Edit message" className="p-1 hover:bg-muted rounded text-muted-foreground"><Edit2 className="w-4 h-4"/></button>
+                              )}
+                              <button onClick={() => handleDeleteMessage(message.id)} title="Delete message" aria-label="Delete message" className="p-1 hover:bg-muted rounded text-red-500"><Trash2 className="w-4 h-4"/></button>
                             </div>
                           )}
 
@@ -352,6 +402,7 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                           isCurrentUser
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-card border-border",
+                          isRichMessage && "border-0 bg-transparent p-0 gap-0 text-foreground",
                           !showAvatar && "mt-1",
                           message.isOptimistic && "opacity-70"
                         )}>
@@ -364,7 +415,16 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                               <div className="truncate opacity-80">{message.replyTo.content || 'Attachment'}</div>
                             </div>
                           )}
-                          {editingId === message.id ? (
+                          {!message.isDeleted && message.type === 'POLL' && message.poll && (
+                            <PollMessage
+                              poll={message.poll}
+                              onVote={(pollId, optionId) => onVote?.(message.id, pollId, optionId)}
+                            />
+                          )}
+                          {!message.isDeleted && message.type === 'TASK' && message.task && (
+                            <TaskMessage task={message.task} workspaceId={workspaceId} />
+                          )}
+                          {!isRichMessage && editingId === message.id ? (
                             <div className="flex flex-col gap-2 min-w-[200px]">
                               <textarea
                                 autoFocus
@@ -387,7 +447,7 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                               </div>
                             </div>
                           ) : (
-                            message.content && (
+                            !isRichMessage && message.content && (
                               <p className={cn(
                                 "text-sm whitespace-pre-wrap break-words",
                                 isCurrentUser ? "text-primary-foreground" : "text-card-foreground",
@@ -418,8 +478,8 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                                 
                                 if (isImage) {
                                   return (
-                                    <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer" className="block max-w-sm rounded-md overflow-hidden border border-black/10">
-                                      <img src={file.url} alt={fileName} className="w-full h-auto object-cover max-h-60 hover:opacity-90 transition-opacity" />
+                                    <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer" className="block w-fit max-w-sm rounded-md overflow-hidden border border-black/10">
+                                      <ChatImage src={file.url} alt={fileName} />
                                     </a>
                                   );
                                 }
@@ -440,10 +500,12 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                         </div>
 
                         {!isCurrentUser && !message.isDeleted && (
-                          <div className="opacity-0 group-hover/message:opacity-100 transition-opacity flex gap-1 -mt-4 bg-popover border border-border rounded shadow-sm absolute left-[100%] ml-2 p-1 z-10">
-                            <button onClick={() => toggleReaction(message.id, '👍')} className="p-1 hover:bg-muted rounded text-sm">👍</button>
-                            <button onClick={() => toggleReaction(message.id, '❤️')} className="p-1 hover:bg-muted rounded text-sm">❤️</button>
-                            <button onClick={() => onReply?.(message)} className="p-1 hover:bg-muted rounded text-muted-foreground"><Reply className="w-4 h-4"/></button>
+                          <div className="opacity-0 group-hover/message:opacity-100 focus-within:opacity-100 transition-opacity flex gap-1 -mt-4 bg-popover border border-border rounded shadow-sm absolute left-[100%] ml-2 p-1 z-10">
+                            <button onClick={() => toggleReaction(message.id, '👍')} title="React with 👍" aria-label="React with thumbs up" className="p-1 hover:bg-muted rounded text-sm">👍</button>
+                            <button onClick={() => toggleReaction(message.id, '❤️')} title="React with ❤️" aria-label="React with heart" className="p-1 hover:bg-muted rounded text-sm">❤️</button>
+                            <button onClick={() => onReply?.(message)} title="Reply in thread" aria-label="Reply in thread" className="p-1 hover:bg-muted rounded text-muted-foreground"><Reply className="w-4 h-4"/></button>
+                            <button onClick={() => copyMessage(message.content)} title="Copy text" aria-label="Copy message text" className="p-1 hover:bg-muted rounded text-muted-foreground"><Copy className="w-4 h-4"/></button>
+                            <button onClick={() => onPinMessage?.(message)} title={message.isPinned ? "Unpin decision" : "Pin as decision"} aria-label={message.isPinned ? "Unpin decision" : "Pin as decision"} className={cn("p-1 hover:bg-muted rounded", message.isPinned ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}><Pin className="w-4 h-4"/></button>
                           </div>
                         )}
                         </div>
@@ -468,6 +530,33 @@ export function MessageList({ messages, isLoading, currentUser, onReply, onReact
                               );
                             })}
                           </div>
+                        )}
+
+                        {!message.replyToId && replyCount > 0 && (
+                          <button
+                            key={`${message.id}-${replyCount}`}
+                            onClick={() => onReply?.(message)}
+                            className="mt-1.5 inline-flex animate-in fade-in-0 slide-in-from-bottom-1 items-center gap-2 rounded-full border border-border bg-card px-2 py-1 text-[11px] text-muted-foreground shadow-sm transition-colors duration-200 hover:border-foreground/30 hover:text-foreground"
+                            aria-label={`View thread, ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`}
+                          >
+                            <span className="flex -space-x-1.5">
+                              {threadParticipants.length > 0 ? threadParticipants.map(participant => (
+                                <Avatar key={participant.id} className="h-5 w-5 border border-background">
+                                  <AvatarImage src={participant.image || undefined} alt={participant.name || participant.username} />
+                                  <AvatarFallback className={cn("text-[8px] text-primary-foreground", getRandomColor(participant.id))}>
+                                    {(participant.name || participant.username).charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )) : (
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              )}
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                            </span>
+                            <span className="hidden sm:inline">View thread</span>
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
                         )}
                       </div>
                     </div>

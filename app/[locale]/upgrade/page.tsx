@@ -1,276 +1,456 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Check, Crown, ArrowRight } from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import Oneko from '@/components/ui/oneko';
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useLocale } from "next-intl";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  CalendarClock,
+  Check,
+  Crown,
+  ReceiptText,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import {
+  formatPrice,
+  intervalLabel,
+  PLAN_META,
+  PLAN_ORDER,
+  PLAN_PRICING,
+  effectivePlan,
+  type BillingIntervalValue,
+} from "@/lib/billing";
+import { cn } from "@/lib/utils";
 
-type BillingInterval = 'month' | 'year';
+type BillingSummary = {
+  plan: string;
+  billingInterval: string | null;
+  planStartedAt: string | null;
+  planExpiresAt: string | null;
+  provider: "RAZORPAY" | "INTERNAL" | null;
+  testMode: boolean;
+  orders: {
+    id: string;
+    tier: string;
+    interval: string;
+    amount: number;
+    currency: string;
+    status: string;
+    receipt: string;
+    createdAt: string;
+    paidAt: string | null;
+  }[];
+};
+
+const features: Record<string, string[]> = {
+  FREE: [
+    "Tasks, notes and mind maps",
+    "Calendar and focus timer",
+    "Paper and Evening themes",
+    "3 mind maps",
+    "Workspace chat",
+  ],
+  PRO: [
+    "Everything in Free",
+    "Every Pro palette",
+    "8 mind maps",
+    "Plan badge on your profile",
+    "Priority support",
+  ],
+  BUSINESS: [
+    "Everything in Pro",
+    "Unlimited mind maps",
+    "Plan badge on your profile",
+    "Priority support",
+    "Early access to new tools",
+  ],
+};
+
+const descriptions: Record<string, string> = {
+  FREE: "For a single person getting organised.",
+  PRO: "For power users and small teams.",
+  BUSINESS: "For teams that work in the same room.",
+};
+
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+};
 
 export default function UpgradePage() {
-  const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [interval, setInterval] = useState<BillingInterval>('month');
+  const [starting, setStarting] = useState<string | null>(null);
+  const [interval, setBillingInterval] = useState<BillingIntervalValue>("MONTH");
+  const [summary, setSummary] = useState<BillingSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
   const { data: session } = useSession();
   const router = useRouter();
+  const locale = useLocale();
+  const { toast } = useToast();
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+  const currentPlan = summary?.plan ?? effectivePlan({
+    plan: session?.user?.plan,
+    planExpiresAt: session?.user?.planExpiresAt,
+  });
+  const isPaid = currentPlan !== "FREE";
+  const checkoutUnavailable =
+    Boolean(session) && !summaryLoading && summary?.provider === null;
 
-  const handleUpgrade = async (tier: 'PRO' | 'BUSINESS') => {
+  const loadSummary = useCallback(async () => {
+    if (!session?.user?.id) {
+      setSummaryLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/billing/summary", { cache: "no-store" });
+      if (res.ok) {
+        setSummary(await res.json());
+      }
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
+  const startCheckout = async (tier: "PRO" | "BUSINESS") => {
     if (!session) {
-      router.push('/api/auth/signin');
+      router.push(`/${locale}/sign-in`);
       return;
     }
 
     try {
-      setIsLoading(tier);
-      const res = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier }),
+      setStarting(tier);
+      const res = await fetch("/api/billing/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier, interval }),
       });
+      const payload = await res.json();
 
-      if (!res.ok) throw new Error('Failed to create checkout session');
-
-      const orderData = await res.json();
-      
-      const resLoaded = await loadRazorpay();
-      if (!resLoaded) {
-        alert('Razorpay SDK failed to load. Are you online?');
-        return;
+      if (!res.ok) {
+        throw new Error(payload?.error || "Could not start checkout.");
       }
 
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'TaskFlow',
-        description: `Upgrade to ${tier} Plan`,
-        order_id: orderData.id,
-        handler: async function (response: any) {
-          try {
-            const verifyRes = await fetch('/api/razorpay/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                tier
-              })
-            });
-            
-            if (verifyRes.ok) {
-              alert('Payment Successful! You are now upgraded.');
-              router.push('/dashboard');
-            } else {
-              alert('Payment verification failed.');
-            }
-          } catch (err) {
-            console.error(err);
-            alert('Verification error.');
-          }
-        },
-        prefill: {
-          name: session?.user?.name || '',
-          email: session?.user?.email || '',
-        },
-        theme: {
-          color: '#ffffff'
-        }
-      };
-      
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function (response: any){
-        console.error(response.error);
-        alert('Payment failed! ' + response.error.description);
-      });
-      rzp.open();
-
+      router.push(`/${locale}/checkout/${payload.id}`);
     } catch (error) {
-      console.error(error);
-      alert('Something went wrong. Please try again.');
+      toast({
+        title: "Checkout could not start",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(null);
+      setStarting(null);
     }
   };
 
-  const plans = [
-    {
-      name: 'Free',
-      description: 'Best for personal use',
-      price: { month: '₹0', year: '₹0' },
-      features: [
-        'Collaboration with team members',
-        '2 Free Themes (Light & Dark)',
-        'Edit & Delete messages',
-        'Rich text & Markdown support',
-        'Up to 3 Mind Maps',
-        'Voice & Video Channels',
-      ],
-      buttonText: 'Get Started',
-      action: () => router.push('/dashboard'),
-      isPro: false,
-    },
-    {
-      name: 'Pro',
-      description: 'For power users & small teams.',
-      price: { month: '₹830', year: '₹8300' },
-      stripePriceId: { month: 'price_pro_month', year: 'price_pro_year' },
-      features: [
-        'Everything in Free',
-        '5 Premium Themes',
-        'Threaded Sidebar Replies',
-        'Global Message Search',
-        'Up to 8 Mind Maps',
-      ],
-      buttonText: 'Get Started',
-      action: () => handleUpgrade('PRO'),
-      isPro: true,
-      popular: true,
-    },
-    {
-      name: 'Business',
-      description: 'Best for business owners.',
-      price: { month: '₹6600', year: '₹66000' },
-      stripePriceId: { month: 'price_biz_month', year: 'price_biz_year' },
-      features: [
-        'Everything in Pro',
-        'Unlimited Custom Themes',
-        'Smart Dividers & Read Receipts',
-        'Unlimited Mind Maps',
-        'Advanced Analytics',
-        'Priority Support',
-      ],
-      buttonText: 'Get Started',
-      action: () => handleUpgrade('BUSINESS'),
-      isPro: true,
-    }
-  ];
+  const paidOrders = summary?.orders.filter((order) => order.status === "PAID") ?? [];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 font-sans selection:bg-white/20 selection:text-white relative overflow-hidden">
-      
-      {/* Oneko Cat Follower */}
-      <Oneko />
-
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/20 blur-[120px] animate-pulse" style={{ animationDuration: '10s' }} />
-      <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] rounded-full bg-purple-500/20 blur-[100px] animate-pulse" style={{ animationDuration: '7s' }} />
-
-      {/* Header section */}
-      <div className="text-center max-w-3xl mx-auto mb-6 relative z-10">
-        <div className="flex items-center justify-center space-x-2 text-sm text-white/60 mb-4">
-          <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10 flex items-center">
-            <span className="mr-2">✨</span> Seamless smart pricing experience
+    <div className="min-h-dvh bg-background">
+      <header className="border-b border-border">
+        <div className="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-5 sm:px-8">
+          <Link
+            href={`/${locale}/dashboard`}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to workspace
+          </Link>
+          <span className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center border border-foreground/70 font-mono text-[10px]">
+              TF
+            </span>
+            <span className="font-display text-xl leading-none">TaskFlow</span>
           </span>
         </div>
-        <h1 className="text-5xl font-bold tracking-tight text-white sm:text-6xl mb-4">
-          Discover Products<br />
-          <span className="text-white/60">With The Best Pricing</span>
-        </h1>
-        <p className="mt-2 text-base text-white/50 max-w-2xl mx-auto">
-          Select from best plan, ensuring a perfect match. Need more or less? Customize your subscription for a seamless fit!
-        </p>
-      </div>
+      </header>
 
-      {/* Toggle switch */}
-      <div className="flex justify-center mb-6 relative z-10">
-        <div className="bg-[#111] p-1 rounded-full border border-white/10 flex">
-          <button
-            onClick={() => setInterval('month')}
-            className={cn(
-              "px-6 py-2 rounded-full text-sm font-medium transition-all duration-200",
-              interval === 'month' ? "bg-white text-black shadow-sm" : "text-white/60 hover:text-white"
-            )}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setInterval('year')}
-            className={cn(
-              "px-6 py-2 rounded-full text-sm font-medium transition-all duration-200",
-              interval === 'year' ? "bg-white text-black shadow-sm" : "text-white/60 hover:text-white"
-            )}
-          >
-            Yearly
-          </button>
-        </div>
-      </div>
+      <main className="mx-auto w-full max-w-[1120px] px-5 py-12 sm:px-8 sm:py-16">
+        <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+          <div className="max-w-[600px]">
+            <p className="eyebrow">Plans</p>
+            <h1 className="mt-3 font-display text-5xl leading-[1.02] sm:text-6xl">
+              Kept simple.
+            </h1>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              One free plan that is genuinely useful, and two paid plans for
+              people who want more room and every palette. No hidden seats, no
+              surprise meters.
+            </p>
+          </div>
 
-      {/* Pricing cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto w-full items-stretch relative z-10">
-        {plans.map((plan, i) => (
-          <div 
-            key={plan.name}
-            className={cn(
-              "bg-[#111] border rounded-3xl p-8 flex flex-col relative transition-transform duration-300 hover:scale-[1.02]",
-              plan.popular ? "border-white/20 shadow-2xl shadow-white/5 scale-105 z-10" : "border-white/10"
-            )}
-          >
-            {plan.popular && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white text-black text-xs font-bold px-3 py-1 rounded-full">
-                Most Popular
-              </div>
-            )}
-            
-            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
-              <div className={cn("w-3 h-3 rounded-full", plan.popular ? "bg-white" : "bg-white/40")} />
-            </div>
-            
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-white mb-1">{plan.name}</h2>
-              <p className="text-sm text-white/50">{plan.description}</p>
-            </div>
-            
-            <div className="mb-8">
-              <div className="flex items-baseline text-5xl font-bold text-white">
-                {plan.price[interval]}
-                {plan.price[interval] !== '$0' && (
-                  <span className="text-sm font-normal text-white/50 ml-2">/ per {interval}</span>
-                )}
-              </div>
-            </div>
-            
-            <button
-              onClick={plan.action}
-              disabled={isLoading === plan.name.toUpperCase()}
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <span
               className={cn(
-                "w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 mb-8 flex items-center justify-center",
-                plan.popular 
-                  ? "bg-white text-black hover:bg-white/90" 
-                  : "bg-white/5 text-white hover:bg-white/10 border border-white/10"
+                "flex items-center gap-1.5 border px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em]",
+                isPaid
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground"
               )}
             >
-              {isLoading === plan.name.toUpperCase() ? 'Loading...' : plan.buttonText}
-            </button>
-            
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white mb-4">What you will get inside?</p>
-              <ul className="space-y-3">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start text-sm text-white/70">
-                    <Check className="h-4 w-4 text-white/40 shrink-0 mr-3 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+              {isPaid ? <Crown className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {isPaid ? `${PLAN_META[currentPlan].name} active` : "Free plan"}
+            </span>
+            {isPaid && summary?.planExpiresAt && (
+              <p className="text-[11px] text-muted-foreground">
+                Access until {formatDate(summary.planExpiresAt)}
+              </p>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1 border border-border p-1">
+            {(["MONTH", "YEAR"] as BillingIntervalValue[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setBillingInterval(value)}
+                className={cn(
+                  "px-4 py-1.5 text-xs transition-colors",
+                  interval === value
+                    ? "bg-secondary font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {value === "MONTH" ? "Monthly" : "Yearly"}
+              </button>
+            ))}
+          </div>
+          {interval === "YEAR" && (
+            <span className="animate-rise font-mono text-[9px] uppercase tracking-[0.12em] text-primary">
+              Two months free
+            </span>
+          )}
+        </div>
+
+        <div className="mt-7 grid gap-px border border-border bg-border lg:grid-cols-3">
+          {(["FREE", "PRO", "BUSINESS"] as const).map((tier) => {
+            const isCurrent = currentPlan === tier;
+            const isLower = PLAN_ORDER[tier] < PLAN_ORDER[currentPlan];
+            const isPopular = tier === "PRO";
+            const price =
+              tier === "FREE"
+                ? 0
+                : PLAN_PRICING[tier][interval];
+            const yearly = tier !== "FREE" && interval === "YEAR";
+            const actionable = session && !isCurrent && !isLower;
+
+            return (
+              <div
+                key={tier}
+                className={cn(
+                  "group relative flex flex-col bg-card p-7 transition-[background-color,transform] duration-300",
+                  isPopular && "bg-card",
+                  isCurrent && "bg-secondary/50"
+                )}
+              >
+                {isPopular && <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />}
+                <div className="flex min-h-[34px] items-start justify-between gap-3">
+                  <h2 className="font-display text-3xl leading-none">
+                    {PLAN_META[tier].name}
+                  </h2>
+                  {isCurrent ? (
+                    <span className="border border-primary/40 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-primary">
+                      Current
+                    </span>
+                  ) : isPopular ? (
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-primary">
+                      Recommended
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-2 flex-1 text-[13px] leading-relaxed text-muted-foreground">
+                  {descriptions[tier]}
+                </p>
+
+                <p
+                  key={`${tier}-${interval}`}
+                  className="mt-8 animate-rise font-mono text-3xl leading-none"
+                >
+                  {formatPrice(price)}
+                  <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                    / {tier === "FREE" ? "forever" : yearly ? "year" : "month"}
+                  </span>
+                </p>
+                {yearly && (
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+                    {formatPrice(
+                      Math.round(PLAN_PRICING[tier as "PRO" | "BUSINESS"][interval] / 12)
+                    )}{" "}
+                    a month, billed once
+                  </p>
+                )}
+                {tier !== "FREE" && interval === "MONTH" && (
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+                    One-time payment. Save 17% on a yearly pass.
+                  </p>
+                )}
+                {tier !== "FREE" && interval === "YEAR" && (
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">
+                    One payment, no auto-renewal.
+                  </p>
+                )}
+
+                <Button
+                  onClick={() => {
+                    if (tier === "FREE") {
+                      if (!session) router.push(`/${locale}/sign-in`);
+                      else router.push(`/${locale}/dashboard`);
+                      return;
+                    }
+                    startCheckout(tier);
+                  }}
+                  disabled={
+                    Boolean(starting) ||
+                    checkoutUnavailable ||
+                    (tier === "FREE" && isCurrent) ||
+                    (tier !== "FREE" && isLower) ||
+                    (isPaid && tier === "FREE")
+                  }
+                  variant={isPopular ? "default" : "outline"}
+                  className="mt-6 w-full"
+                >
+                  {starting === tier ? (
+                    <>
+                      <span className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+                      Preparing…
+                    </>
+                  ) : isCurrent ? (
+                    tier === "FREE" ? (
+                      "Current plan"
+                    ) : (
+                      "Extend access"
+                    )
+                  ) : isLower || (isPaid && tier === "FREE") ? (
+                    "Included in your plan"
+                  ) : tier === "FREE" ? (
+                    session ? "Open workspace" : "Start free"
+                  ) : (
+                    <>Choose {PLAN_META[tier].name}</>
+                  )}
+                </Button>
+
+                <ul className="mt-7 space-y-2.5 border-t border-border pt-5">
+                  {features[tier].map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-2 text-[13px] text-muted-foreground"
+                    >
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
+        {summary?.testMode && (
+          <p className="mt-6 flex max-w-[720px] items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-4 text-xs leading-relaxed text-muted-foreground">
+            <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+            The built-in TaskFlow Pay gateway is in test mode. One-time
+            payments activate prepaid access instantly but move no money. Add
+            Razorpay keys for live billing.
+          </p>
+        )}
+
+        {isPaid && summary && (
+          <section className="mt-10 grid gap-px border border-border bg-border lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="bg-card p-6 sm:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="eyebrow">Your plan</p>
+                  <h2 className="mt-2 font-display text-2xl">
+                    {PLAN_META[summary.plan]?.name ?? summary.plan}{" "}
+                    <span className="font-sans text-xs text-muted-foreground">
+                      · {intervalLabel(summary.billingInterval)}
+                    </span>
+                  </h2>
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    Access until {formatDate(summary.planExpiresAt)}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-5 max-w-[480px] border-t border-border pt-4 text-[11px] leading-relaxed text-muted-foreground">
+                This is prepaid access. Nothing is charged automatically, and
+                every feature stays available until the date above. Extending
+                adds another {intervalLabel(summary.billingInterval).toLowerCase()} period
+                to the remaining time.
+              </p>
+            </div>
+
+            <div className="bg-card p-6 sm:p-7">
+              <p className="eyebrow flex items-center gap-1.5">
+                <ReceiptText className="h-3 w-3" />
+                Billing history
+              </p>
+              {paidOrders.length === 0 ? (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  No paid invoices yet.
+                </p>
+              ) : (
+                <ul className="mt-3 divide-y divide-border">
+                  {paidOrders.slice(0, 4).map((order) => (
+                    <li
+                      key={order.id}
+                      className="flex items-center justify-between gap-3 py-2.5 text-[11px]"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          {PLAN_META[order.tier]?.name ?? order.tier} ·{" "}
+                          {intervalLabel(order.interval)}
+                        </p>
+                        <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                          {order.receipt} · {formatDate(order.paidAt)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-mono">
+                        {formatPrice(order.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {summaryLoading
+              ? "Checking billing status…"
+              : summary?.provider === "RAZORPAY"
+                ? "Payments handled by Razorpay."
+                : summary?.provider === "INTERNAL"
+                  ? "Test gateway enabled on this deployment."
+                  : "Checkout is not configured on this deployment."}
+          </span>
+          <Link
+            href={`/${locale}/dashboard/settings/theme`}
+            className="group inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
+            Preview the palettes
+            <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </main>
     </div>
   );
 }

@@ -17,7 +17,7 @@ export const LoadingState = ({
     <>
       {!hideLoaderIcon && (
         <Loader2
-          className={cn(`mr-2 h-4 2-4 animate-spin`, className)}
+          className={cn(`mr-2 h-4 w-4 animate-spin`, className)}
           {...props}
         />
       )}

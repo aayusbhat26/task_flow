@@ -1,14 +1,9 @@
-import { AssignedToMeDataItem, HomeRecentActivity } from "@/types/extended";
-import { Card, CardContent } from "../ui/card";
+import { HomeRecentActivity } from "@/types/extended";
 import { ReadOnlyEmoji } from "../common/ReadOnlyEmoji";
 import Link from "next/link";
-import { useFormatter, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { UserHoverInfo } from "../common/UserHoverInfoCard";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "../ui/button";
 import { Star, Workflow, PencilRuler, Hash, Users, StickyNote, Timer, Code } from "lucide-react";
-import { StarSvg } from "../common/StarSvg";
 
 interface Props {
   activityItem: HomeRecentActivity;
@@ -27,13 +22,14 @@ export const HomeRecentActivityItem = ({
   },
 }: Props) => {
   const format = useFormatter();
+  const locale = useLocale();
   const dateTime = new Date(updated.at);
   const now = new Date();
 
   const t = useTranslations("STARRED");
   const c = useTranslations("COMMON");
 
-  const itemTypeSentence = useMemo(() => {
+  const typeLabel = (() => {
     switch (type) {
       case "mindMap":
         return c("EDITED_ITEM_SENTENCE.MIND_MAP");
@@ -52,74 +48,65 @@ export const HomeRecentActivityItem = ({
       default:
         return c("EDITED_ITEM_SENTENCE.TASK");
     }
-  }, [type, c]);
-  return (
-    <Link href={link}>
-      <Card className="bg-background border-none hover:bg-accent transition-colors duration-200 p-2">
-        <CardContent className="flex w-full justify-between sm:items-center p-2 sm:p-2 pt-0">
-          <div className="flex flex-row sm:gap-3 gap-2 w-full">
-            <div className="relative shrink-0">
-              <ReadOnlyEmoji
-                className="sm:h-10 sm:w-10 h-8 w-8 shrink-0"
-                selectedEmoji={emoji}
-              />
-              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-sm border" title={type}>
-                {type === "mindMap" ? <Workflow className="w-3 h-3 text-primary" /> : 
-                 type === "task" ? <PencilRuler className="w-3 h-3 text-primary" /> :
-                 type === "channel" ? <Hash className="w-3 h-3 text-primary" /> :
-                 type === "group" ? <Users className="w-3 h-3 text-primary" /> :
-                 type === "note" ? <StickyNote className="w-3 h-3 text-primary" /> :
-                 type === "pomodoro" ? <Timer className="w-3 h-3 text-primary" /> :
-                 type === "dsa" ? <Code className="w-3 h-3 text-primary" /> :
-                 <PencilRuler className="w-3 h-3 text-primary" />}
-              </div>
-            </div>
-            <div className="w-full">
-              <div className="flex items-center">
-                <h2 className="text-base sm:text-lg font-semibold">
-                  {!title && type === "mindMap" && t("DEFAULT_NAME.MIND_MAP")}
-                  {!title && type === "task" && t("DEFAULT_NAME.TASK")}
-                  {title && title}
-                </h2>
-                {starred && <StarSvg className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />}
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center md:gap-1 text-sm">
-                <p className="text-muted-foreground">{itemTypeSentence}</p>{" "}
-                <span className="text-muted-foreground">{format.relativeTime(dateTime, now)}</span>{" "}
-                
-                {updated.by && (
-                  <>
-                    <span className="text-muted-foreground">{c("EDITED_ITEM_SENTENCE.BY")}</span>
-                    <UserHoverInfo className="px-0" user={updated.by} />
-                  </>
-                )}
+  })();
 
-                <div className="flex items-center gap-1">
-                  <p className="text-muted-foreground">
-                    {c("EDITED_ITEM_SENTENCE.IN")}{" "}
-                    <Link
-                      className={cn(
-                        `${buttonVariants({
-                          variant: "link",
-                        })} px-0 text-muted-foreground`
-                      )}
-                      href={
-                        workspaceId === "personal" 
-                          ? "/dashboard/notes"
-                          : workspaceId === "dsa" 
-                            ? "/dashboard/dsa"
-                            : `/dashboard/workspace/${workspaceId}`
-                      }
-                    >
-                      {workspaceName}
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+  const typeIcon =
+    type === "mindMap" ? (
+      <Workflow className="h-3 w-3" />
+    ) : type === "task" ? (
+      <PencilRuler className="h-3 w-3" />
+    ) : type === "channel" ? (
+      <Hash className="h-3 w-3" />
+    ) : type === "group" ? (
+      <Users className="h-3 w-3" />
+    ) : type === "note" ? (
+      <StickyNote className="h-3 w-3" />
+    ) : type === "pomodoro" ? (
+      <Timer className="h-3 w-3" />
+    ) : (
+      <Code className="h-3 w-3" />
+    );
+
+  const href = link.startsWith("/") ? `/${locale}${link}` : link;
+
+  return (
+    <Link
+      href={href}
+      className="group flex items-start gap-3 border-b border-border py-4 transition-colors last:border-b-0 hover:bg-secondary/30"
+    >
+      <div className="relative shrink-0">
+        <ReadOnlyEmoji
+          className="h-9 w-9 shrink-0"
+          selectedEmoji={emoji}
+        />
+        <span className="absolute -bottom-1 -right-1 border border-border bg-background p-0.5 text-muted-foreground">
+          {typeIcon}
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3 className="truncate text-[13px] font-medium">
+            {!title && type === "mindMap" && t("DEFAULT_NAME.MIND_MAP")}
+            {!title && type === "task" && t("DEFAULT_NAME.TASK")}
+            {title}
+          </h3>
+          {starred && <Star className="h-3 w-3 shrink-0 text-primary" />}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-1.5 font-mono text-[9px] uppercase tracking-[0.06em] text-muted-foreground">
+          <span>{typeLabel}</span>
+          <span aria-hidden>·</span>
+          <span>{format.relativeTime(dateTime, now)}</span>
+          {updated.by && (
+            <>
+              <span aria-hidden>·</span>
+              <UserHoverInfo className="px-0 text-[9px]" user={updated.by} />
+            </>
+          )}
+          <span aria-hidden>·</span>
+          <span>{workspaceName}</span>
+        </div>
+      </div>
     </Link>
   );
 };

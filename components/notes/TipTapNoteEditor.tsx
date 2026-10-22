@@ -102,7 +102,7 @@ export function TipTapNoteEditor({
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm sm:prose-base dark:prose-invert prose-headings:font-bold prose-a:text-primary focus:outline-none max-w-none min-h-[500px] pb-32',
+          'prose prose-stone dark:prose-invert min-h-[500px] max-w-none pb-32 focus:outline-none prose-headings:font-display prose-headings:font-normal prose-p:text-[15px] prose-p:leading-7 prose-a:text-primary prose-a:underline prose-a:underline-offset-2 prose-code:bg-muted prose-code:px-1 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none prose-blockquote:border-l-primary prose-blockquote:font-display prose-blockquote:text-lg prose-blockquote:not-italic',
       },
     },
     onUpdate: ({ editor }) => {
@@ -163,12 +163,12 @@ export function TipTapNoteEditor({
     <div className="flex-1 flex flex-col bg-background h-full overflow-hidden relative">
       {/* Top Bar */}
       <div className="border-b w-full">
-        <div className="flex items-center justify-between px-8 py-4 max-w-4xl w-full mx-auto">
+        <div className="mx-auto flex w-full max-w-[820px] items-center justify-between py-5 pl-14 pr-4 sm:px-8">
           <div className="flex-1 min-w-0 pr-4">
             <Input
               value={title}
               onChange={handleTitleChange}
-              className="text-3xl font-bold border-none bg-transparent shadow-none px-0 focus-visible:ring-0 w-full"
+              className="h-auto w-full border-none bg-transparent px-0 font-display text-3xl shadow-none focus-visible:ring-0 sm:text-4xl"
               placeholder="Note Title"
             />
           </div>
@@ -177,7 +177,7 @@ export function TipTapNoteEditor({
               variant="ghost"
               size="sm"
               onClick={() => note && onNoteDelete(note.id)}
-              className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+              className="h-8 px-2 text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete
@@ -187,7 +187,7 @@ export function TipTapNoteEditor({
       </div>
 
       {/* Editor Content Area */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 max-w-4xl w-full mx-auto">
+      <div className="mx-auto w-full max-w-[820px] flex-1 overflow-y-auto px-8 py-6">
         <FloatingMenu editor={editor} tippyOptions={{ duration: 100 }} className="flex overflow-hidden rounded-md border bg-popover p-1 shadow-md">
           <button
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}

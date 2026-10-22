@@ -1,4 +1,4 @@
-import { OpenSidebar } from '@/components/header/OpenSidebar';
+import { DashboardHeader } from '@/components/header/DashboardHeader';
 import { NotesApp } from '@/components/notes/NotesApp';
 import { getAuthSession } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -126,7 +126,7 @@ export default async function NotesPage() {
   const session = await getAuthSession();
 
   if (!session?.user?.id) {
-    redirect('/auth/signin');
+    redirect('/sign-in');
   }
 
   const [notes, workspaces] = await Promise.all([
@@ -152,19 +152,17 @@ export default async function NotesPage() {
   }));
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Mobile sidebar toggle button */}
-      <div className="absolute top-4 left-4 z-50 lg:hidden">
-        <OpenSidebar />
+    <>
+      <DashboardHeader />
+      <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden">
+        <Suspense fallback={<NotesLoading />}>
+          <NotesApp
+            notes={transformedNotes}
+            workspaces={workspaces}
+            currentUser={currentUser}
+          />
+        </Suspense>
       </div>
-
-      <Suspense fallback={<NotesLoading />}>
-        <NotesApp
-          notes={transformedNotes}
-          workspaces={workspaces}
-          currentUser={currentUser}
-        />
-      </Suspense>
-    </div>
+    </>
   );
 }

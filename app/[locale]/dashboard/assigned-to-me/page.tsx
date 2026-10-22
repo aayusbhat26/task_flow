@@ -13,7 +13,7 @@ const AssignedToMe = async () => {
       <DashboardHeader>
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <main>
+      <main className="min-h-full px-5 py-8 sm:px-8">
         <AssignedToMeContainer userId={session.user.id} />
       </main>
     </>

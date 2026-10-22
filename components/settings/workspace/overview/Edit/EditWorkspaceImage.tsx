@@ -99,7 +99,7 @@ export const EditorWorkspaceImage = ({
   }, [imagePreview, image]);
 
   const { toast } = useToast();
-  const m = useTranslations("MESSAGE");
+  const m = useTranslations("MESSAGES");
   const router = useRouter();
 
   const { startUpload, isUploading } = useUploadThing("imageUploader", {

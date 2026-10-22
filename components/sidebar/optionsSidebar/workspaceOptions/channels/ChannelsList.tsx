@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Hash, Volume2, Video, Mic, ChevronDown, ChevronRight, Plus, Keyboard } from "lucide-react";
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Channel, ChannelCategory, ChannelType } from "@prisma/client";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ import { NewChannelModal } from "./NewChannelModal";
 
 export const ChannelsList = ({ workspaceId }: Props) => {
   const t = useTranslations("SIDEBAR.WORKSPACE_OPTIONS");
+  const locale = useLocale();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   const { data: channelsData, isLoading } = useQuery<ChannelsData>({
@@ -60,7 +61,7 @@ export const ChannelsList = ({ workspaceId }: Props) => {
       {channelsData.uncategorizedChannels.map(channel => (
         <Link
           key={channel.id}
-          href={`/dashboard/workspace/${workspaceId}/channel/${channel.id}`}
+          href={`/${locale}/dashboard/workspace/${workspaceId}/channel/${channel.id}`}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
             "w-full justify-start h-8 text-muted-foreground hover:text-foreground font-semibold px-2"
@@ -101,7 +102,7 @@ export const ChannelsList = ({ workspaceId }: Props) => {
                 {category.channels.map(channel => (
                   <Link
                     key={channel.id}
-                    href={`/dashboard/workspace/${workspaceId}/channel/${channel.id}`}
+                    href={`/${locale}/dashboard/workspace/${workspaceId}/channel/${channel.id}`}
                     className={cn(
                       buttonVariants({ variant: "ghost", size: "sm" }),
                       "w-full justify-start h-8 text-muted-foreground hover:text-foreground hover:bg-muted font-semibold px-2"

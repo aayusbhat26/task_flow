@@ -111,7 +111,15 @@ export const completeOnboarding = async (req: Request, res: Response) => {
         userRole: 'OWNER',
       },
     });
-    console.log('✅ Subscription created');
+
+    await db.channel.create({
+      data: {
+        name: 'general',
+        type: 'TEXT',
+        workspaceId: workspace.id,
+      },
+    });
+    console.log('✅ Subscription and default channel created');
 
     // Create pomodoro settings
     console.log('⏱️ Creating pomodoro settings...');

@@ -237,7 +237,7 @@ export const GET = async (request: Request) => {
       id: dsa.id,
       title: dsa.question.title,
       emoji: "💻",
-      link: `/dashboard/dsa/${dsa.questionId}`,
+      link: "/dsa",
       workspaceName: "DSA Tracker",
       createdAt: new Date(dsa.createdAt),
       type: "dsa",

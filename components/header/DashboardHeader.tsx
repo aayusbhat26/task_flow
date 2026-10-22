@@ -1,6 +1,5 @@
 import { getAuthSession } from "@/lib/auth";
 import { BreadcrumbNav } from "./BreadcrumbNav";
-import Welcoming from "../common/Welcoming";
 import { OpenSidebar } from "./OpenSidebar";
 import { cn } from "@/lib/utils";
 import { SavingStatus } from "./SavingStatus";
@@ -8,6 +7,7 @@ import { BackBtn } from "./BackBtn";
 import { NotificationContainer } from "../notifications/NotificationContainer";
 import { TasksModal } from "../tasks/TasksModal";
 import { PointsDisplay } from "../points/PointsDisplay";
+import { User } from "./User";
 
 interface Props {
   addManualRoutes?: {
@@ -35,41 +35,42 @@ export const DashboardHeader = async ({
 }: Props) => {
   const session = await getAuthSession();
   if (!session) return null;
+
   return (
     <header
       className={cn(
-        "flex w-full justify-between items-center mb-4 py-2 gap-2",
+        "sticky top-0 z-30 flex h-14 w-full shrink-0 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8",
         className
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <OpenSidebar />
-        <Welcoming
-          hideOnMobile
-          hideOnDesktop
-          username={session?.user.username!}
-          name={session?.user.name}
-          surname={session?.user.surname}
-          showOnlyOnPath="/dashboard"
-        />
         {showBackBtn && <BackBtn />}
         {showingSavingStatus && <SavingStatus />}
         {!hideBreadCrumb && (
-          <BreadcrumbNav
-            addManualRoutes={addManualRoutes}
-            workspaceHref={workspaceHref}
-          />
+          <div className="hidden min-w-0 sm:block">
+            <BreadcrumbNav
+              addManualRoutes={addManualRoutes}
+              workspaceHref={workspaceHref}
+            />
+          </div>
         )}
       </div>
-      <div className="flex items-center gap-1 sm:gap-2">
+
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
         <PointsDisplay />
-        <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {children}
           <TasksModal />
           <NotificationContainer userId={session.user.id} />
+          <User
+            profileImage={session.user.image}
+            username={session.user.username ?? ""}
+            email={session.user.email ?? ""}
+            name={session.user.name}
+            surname={session.user.surname}
+          />
         </div>
-
-
       </div>
     </header>
   );

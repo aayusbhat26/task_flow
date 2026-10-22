@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const platform = searchParams.get('platform');
     const includeImported = searchParams.get('includeImported') === 'true';
+    const limitParam = Number(searchParams.get('limit'));
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 50) : undefined;
 
     // Build where clause for questions
     const whereClause: any = {};
@@ -72,7 +74,8 @@ export async function GET(req: NextRequest) {
         { frequency: 'desc' },
         { difficulty: 'asc' },
         { title: 'asc' }
-      ]
+      ],
+      take: limit,
     });
 
     console.log('🔍 Questions API - Found questions:', questions.length);

@@ -8,7 +8,7 @@
     "USERNAME": "Username",
     "SIGN_IN": {
       "TITLE": "Sign in",
-      "DESC": "Welcome back to ....",
+      "DESC": "Sign in to pick up where you left off.",
       "SUBMIT_BTN": "Sign in",
       "FORGOT_PASSWORD": "Forgot password?",
       "DONT_HAVE_ACCOUNT": {
@@ -18,12 +18,12 @@
       "PROVIDERS": {
         "GOOGLE": "Sign in with Google",
         "APPLE": "Sign in with Apple",
-        "GITHUB": "Sign in with Github"
+        "GITHUB": "Sign in with GitHub"
       }
     },
     "SIGN_UP": {
       "TITLE": "Sign up",
-      "DESC": "Create your account",
+      "DESC": "Create a workspace for the work in front of you.",
       "SUBMIT_BTN": "Sign up",
       "FORGOT_PASSWORD": "Forgot password?",
       "HAVE_ACCOUNT": {
@@ -37,7 +37,7 @@
       "PROVIDERS": {
         "GOOGLE": "Sign up with Google",
         "APPLE": "Sign up with Apple",
-        "GITHUB": "Sign up with Github"
+        "GITHUB": "Sign up with GitHub"
       }
     },
     "NEW_WORKSPACE": {
@@ -92,7 +92,6 @@
       },
       "IMAGE": "Only .jpeg, .jpg, .png, .webp, .gif types are supported"
     },
-
     "FINISH": {
       "TITLE": "That's it!",
       "DESC_FIRST": "You can already start using",
@@ -135,7 +134,10 @@
       "NO_USER_API": "User not Found",
       "UNAUTHORIZED": "Unauthorized. Please sign in!",
       "TOO_MANY_WORKSPACES": "The limit on the number of workspaces that can be created has been reached",
-      "SOUND_LOAD_ERROR": "Failed to load sound effect. Please try again."
+      "SOUND_LOAD_ERROR": "Failed to load sound effect. Please try again.",
+      "UPLOAD_TITLE": "Upload failed. Please try again.",
+      "SAME_NAME_WORKSPACE": "A workspace with this name already exists",
+      "NO_PERMISSION": "You do not have permission to do that"
     },
     "SUCCESS": {
       "SIGN_UP": "Account was created!",
@@ -145,14 +147,19 @@
       "ONBOARDING_COMPLETE": "Welcome to TaskFlow!",
       "PASSWORD_CHANGED": "Password has been changed!",
       "NEW_WORKSPACE": "The workspace has been created!",
-      "SOUND_SETTINGS_UPDATED": "Sound settings have been updated successfully!"
+      "SOUND_SETTINGS_UPDATED": "Sound settings have been updated successfully!",
+      "TASK_DELETED": "Task deleted",
+      "CHANGED_PASSWORD": "Password changed",
+      "UPDATED_WORKSPACE": "Workspace updated",
+      "WORKSPACE_PICTURE_UPDATED": "Workspace icon updated",
+      "WORKSPACE_PICTURE_DELETED": "Workspace icon removed"
     },
     "PENDING": {
       "LOADING": "Please wait"
     },
     "SCHEMA": {
       "PASSWORD": {
-        "MIN": "Password must have at least 6 characters",
+        "MIN": "Password must have at least 10 characters",
         "UPPERCASE": "Password must contain at least one uppercase letter",
         "LOWERCASE": "Password must contain at least one lowercase letter",
         "DIGIT": "Password must contain at least one digit"
@@ -168,15 +175,23 @@
       },
       "WORKSPACE": {
         "SHORT": "Workspace name is too short",
-        "SPECIAL_CHARS": "Workspace name must only contain letters and digits",
-        "LONG": "Workspace name is too long",
+        "SPECIAL_CHARS": "Workspace name can use letters, numbers, spaces, dots, dashes and underscores",
+        "LONG": "Workspace name is too long (40 characters max)",
         "WRONG_NAME": "Please enter the correct workspace name"
       },
       "LANGUAGE": "Please select a language",
       "CHOOSE_ONE": "Please select one of the options",
       "PASSWORD_NOT_THE_SAME": "Passwords do not match",
       "LINK": "Please enter a valid URL",
-      "IMAGE_REQUIRED": "Please select an image"
+      "IMAGE_REQUIRED": "Please select an image",
+      "PASSWORD_SAME_AS_CURRENT": "The new password must be different from the current one"
+    },
+    "SUCCES": {
+      "TASK_ADDED": "Task created",
+      "MIND_MAP_ADDED": "Mind map created",
+      "UPDATE_POMODORO_SETTINGS": "Pomodoro settings updated",
+      "RESET_POMODORO_SETTINGS": "Pomodoro settings reset",
+      "LEAVE_FROM_WORKSPACE": "You left the workspace"
     }
   },
   "SIDEBAR": {
@@ -517,7 +532,8 @@
         "DESC": "You will loose access to all your workspaces and projects",
         "WARNING": "Account deletion is permanent and cannot be undone,click 'Delete my account' to delete your account.",
         "BUTTON": "DELETE MY ACCOUNT"
-      }
+      },
+      "NO_LANGUAGE": "Please select a language"
     },
     "THEME": {
       "ADD_TASK": "Add task",
@@ -525,13 +541,13 @@
     },
     "SECURITY": {
       "TITLE": "Security",
-      "DESC": "You can change your password here. Remember that it should contain atleast 6 characters, at least one upper and lower case letter and at least one number",
+      "DESC": "Change the password used to sign in to this account. Use at least 10 characters with upper and lower case letters and a number.",
       "WARNING": {
-        "FIRST": "The password can be changed",
-        "SECOND": "only for accounts created through the form on the site",
-        "THIRD": "If you have created an account via Google or Github button, ",
-        "FOURTH": "it is not possible to change the password",
-        "FIFTH": "due to another method of account authorization."
+        "FIRST": "Password changes only apply to accounts created with email and password. ",
+        "SECOND": "Accounts created through Google or GitHub ",
+        "THIRD": "must manage their password with that provider. ",
+        "FOURTH": "",
+        "FIFTH": ""
       },
       "FORM": {
         "CURRENT": {
@@ -548,6 +564,44 @@
         },
         "BTN": "Change password",
         "BTN_PENDING": "Changing password"
+      }
+    },
+    "SOUND": {
+      "TITLE": "Sound",
+      "DESCRIPTION": "Choose what plays when a task or practice question is completed.",
+      "ENABLE_SOUNDS": {
+        "LABEL": "Enable sounds",
+        "DESCRIPTION": "Play a short cue when something is completed."
+      },
+      "VOLUME": {
+        "LABEL": "Volume: {value}%",
+        "DESCRIPTION": "Set the level for notification sounds."
+      },
+      "TASK_SOUND": {
+        "LABEL": "Task completion",
+        "DESCRIPTION": "Plays when a task is marked complete.",
+        "PLACEHOLDER": "Choose a sound"
+      },
+      "QUESTION_SOUND": {
+        "LABEL": "Practice completion",
+        "DESCRIPTION": "Plays when a DSA question is marked complete.",
+        "PLACEHOLDER": "Choose a sound"
+      },
+      "SAVE": {
+        "BUTTON": "Save sound settings",
+        "PENDING": "Saving..."
+      },
+      "SOUND_EFFECTS": {
+        "SUCCESS": "Bell (short)",
+        "ACHIEVEMENT": "Fancy",
+        "TASK_COMPLETE": "Digital",
+        "QUESTION_COMPLETE": "Analog",
+        "BELL": "Bell",
+        "DIGITAL": "Digital",
+        "BIRD": "Bird",
+        "FANCY": "Fancy",
+        "ANALOG": "Analog",
+        "CHURCH_BELL": "Church bell"
       }
     }
   },
@@ -644,13 +698,14 @@
   },
   "ASSIGNED_TO_ME": {
     "TITLE": "Assigned to Me",
-    "DESC": "Here you will find all your saved mind maps and tasks",
+    "DESC": "Items assigned to you across your workspaces.",
     "NO_ASSIGMENT": "You haven't been assigned anywhere yet",
     "NOT_FOUND": "We couldn't find any tasks or mind maps that met the criteria",
     "DEFAULT_NAME": {
       "MIND_MAP": "Untitled Mind Map",
       "TASK": "Untitled Task"
-    }
+    },
+    "NO_ASSIGNMENT": "You haven't been assigned anywhere yet"
   },
   "CALENDAR": {
     "DAYS_OF_WEEK": {

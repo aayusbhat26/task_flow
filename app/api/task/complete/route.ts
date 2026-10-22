@@ -17,7 +17,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const validationResult = completeTaskSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -82,6 +87,7 @@ export async function POST(request: Request) {
         data: {
           isCompleted: true,
           completedAt: new Date(),
+          status: "DONE",
           updatedUserId: session.user.id,
         },
       });

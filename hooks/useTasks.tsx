@@ -34,22 +34,42 @@ interface Task {
   };
   isCompleted?: boolean;
   priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  workspace?: { id: string; name: string };
+}
+
+interface TasksStats {
+  total: number;
+  completed: number;
+  pending: number;
+}
+
+interface TasksPagination {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 }
 
 interface TasksState {
   tasks: Task[];
   loading: boolean;
   error: string | null;
+  stats: TasksStats;
+  pagination: TasksPagination;
 }
 
 interface UseTasksReturn {
   tasks: Task[];
   loading: boolean;
   error: string | null;
+  stats: TasksStats;
+  pagination: TasksPagination;
   fetchTasks: (params?: {
     workspaceId?: string;
     search?: string;
     filter?: 'all' | 'completed' | 'pending';
+    offset?: number;
+    append?: boolean;
   }) => Promise<void>;
   completeTask: (taskId: string, workspaceId?: string) => Promise<void>;
   createTask: (taskData: {
@@ -60,14 +80,15 @@ interface UseTasksReturn {
     assignedUserIds?: string[];
     dueDate?: string;
   }) => Promise<void>;
-  refreshTasks: () => Promise<void>;
 }
 
 export function useTasks(): UseTasksReturn {
   const [state, setState] = useState<TasksState>({
     tasks: [],
     loading: false,
-    error: null
+    error: null,
+    stats: { total: 0, completed: 0, pending: 0 },
+    pagination: { total: 0, limit: 50, offset: 0, hasMore: false },
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -76,6 +97,8 @@ export function useTasks(): UseTasksReturn {
     workspaceId?: string;
     search?: string;
     filter?: 'all' | 'completed' | 'pending';
+    offset?: number;
+    append?: boolean;
   }) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
@@ -89,6 +112,9 @@ export function useTasks(): UseTasksReturn {
       }
       if (params?.filter && params.filter !== 'all') {
         searchParams.append('filter', params.filter);
+      }
+      if (params?.offset) {
+        searchParams.append('offset', String(params.offset));
       }
 
       const response = await fetch(`/api/tasks?${searchParams}`, {
@@ -115,7 +141,9 @@ export function useTasks(): UseTasksReturn {
           ...prev,
           loading: false,
           error: null,
-          tasks: processedTasks
+          tasks: params?.append ? [...prev.tasks, ...processedTasks] : processedTasks,
+          stats: data.stats ?? prev.stats,
+          pagination: data.pagination ?? prev.pagination,
         }));
       } else {
         throw new Error(data.error || 'Failed to fetch tasks');
@@ -271,18 +299,14 @@ export function useTasks(): UseTasksReturn {
     }
   }, [toast]);
 
-  const refreshTasks = useCallback(async () => {
-    // Re-fetch with the last used parameters or default to all tasks
-    await fetchTasks();
-  }, [fetchTasks]);
-
   return {
     tasks: state.tasks,
     loading: state.loading,
     error: state.error,
+    stats: state.stats,
+    pagination: state.pagination,
     fetchTasks,
     completeTask,
     createTask,
-    refreshTasks
   };
 }

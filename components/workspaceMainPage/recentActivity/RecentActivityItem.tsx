@@ -8,6 +8,7 @@ import { useTruncateText } from "@/hooks/useTruncateText";
 import { WorkspaceRecentActivity } from "@/types/extended";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import Link from "next/link";
 import { TagItem } from "./TagItem";
 import { AssignedToTaskUser } from "./AssignedToTaskUser";
@@ -22,7 +23,7 @@ export const RecentActivityItem = ({
   activity: { tags, title, emoji, starred, type, updated, assignedTo, link, priority },
   viewMode = "list",
 }: Props) => {
-  const router = useRouter();
+  const locale = useLocale();
 
   const truncatedTitle = useTruncateText(title, 40);
 
@@ -52,9 +53,9 @@ export const RecentActivityItem = ({
     }
   })();
   return (
-    <Link href={link}>
-      <Card className="bg-background border-none hover:bg-accent transition-colors duration-200 p-2 h-full">
-        <CardContent className={`flex w-full justify-between p-2 sm:p-2 pt-0 ${viewMode === "grid" ? "flex-col items-start gap-2" : "sm:items-center"}`}>
+    <Link href={link.startsWith("/") ? `/${locale}${link}` : link}>
+      <Card className="h-full border-0 border-b border-border bg-transparent transition-colors hover:bg-secondary/30">
+        <CardContent className={`flex w-full justify-between px-1 py-4 ${viewMode === "grid" ? "flex-col items-start gap-2" : "sm:items-center"}`}>
           <div className={`flex sm:gap-4 gap-2 w-full ${viewMode === "grid" ? "flex-col items-start" : "flex-row"}`}>
             <div className="relative shrink-0">
               <ReadOnlyEmoji
@@ -74,7 +75,7 @@ export const RecentActivityItem = ({
             </div>
             <div className="w-full">
               <div className="flex items-center">
-                <h2 className="text-base sm:text-lg font-semibold line-clamp-1">
+                <h2 className="line-clamp-1 text-[13px] font-medium">
                   {!title && type === "mindMap" && c("DEFAULT_NAME.MIND_MAP")}
                   {!title && type === "task" && c("DEFAULT_NAME.TASK")}
                   {title && truncatedTitle}
@@ -87,18 +88,21 @@ export const RecentActivityItem = ({
                 )}
               </div>
               {updated.by ? (
-                <div className="flex flex-col md:flex-row md:items-center md:gap-1">
-                  <p className="text-muted-foreground">{itemTypeSentence}</p>{" "}
-                  {format.relativeTime(dateTime, now)}{" "}
-                  {c("EDITED_ITEM_SENTENCE.BY")}
-                  <div className="flex items-center gap-1">
-                    <UserHoverInfo className="px-0" user={updated.by} />
-                  </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-mono text-[9px] uppercase tracking-[0.06em] text-muted-foreground">
+                  <span>{itemTypeSentence}</span>
+                  <span aria-hidden>·</span>
+                  <span>{format.relativeTime(dateTime, now)}</span>
+                  <span aria-hidden>·</span>
+                  <span className="normal-case tracking-normal">
+                    {c("EDITED_ITEM_SENTENCE.BY")}
+                  </span>
+                  <UserHoverInfo className="px-0 text-[9px]" user={updated.by} />
                 </div>
               ) : (
-                <div className="flex flex-col md:flex-row md:items-center md:gap-1">
-                  <p className="text-muted-foreground">{itemTypeSentence}</p>{" "}
-                  <span className="text-muted-foreground">{format.relativeTime(dateTime, now)}</span>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-mono text-[9px] uppercase tracking-[0.06em] text-muted-foreground">
+                  <span>{itemTypeSentence}</span>
+                  <span aria-hidden>·</span>
+                  <span>{format.relativeTime(dateTime, now)}</span>
                 </div>
               )}
               <div className="flex items-center flex-wrap gap-1 mt-2">

@@ -126,7 +126,6 @@ export function ImportedQuestionsTab({ batchId }: ImportedQuestionsTabProps = {}
 
   const updateProgress = async (questionId: string, status: string) => {
     try {
-      console.log('🔄 ImportedQuestionsTab updateProgress called:', { questionId, status });
       const response = await fetch('/api/dsa/progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,7 +136,6 @@ export function ImportedQuestionsTab({ batchId }: ImportedQuestionsTabProps = {}
       });
 
       const data = await response.json();
-      console.log('📊 ImportedQuestionsTab Progress API response:', data);
 
       if (data.success) {
         toast({
@@ -145,18 +143,13 @@ export function ImportedQuestionsTab({ batchId }: ImportedQuestionsTabProps = {}
           description: data.message
         });
         
-        // Refresh local data
-        console.log('🔄 Refreshing imported questions data...');
         fetchImportedQuestions();
-        
-        // Try to refresh parent page stats by dispatching a custom event
-        console.log('📡 Dispatching refresh event to parent...');
         window.dispatchEvent(new CustomEvent('dsaProgressUpdated'));
       } else {
         throw new Error(data.error);
       }
     } catch (error) {
-      console.error('❌ ImportedQuestionsTab update error:', error);
+      console.error('Error updating imported question progress:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to update progress',
@@ -440,12 +433,10 @@ export function ImportedQuestionsTab({ batchId }: ImportedQuestionsTabProps = {}
                       <div className="flex flex-col items-center gap-2" style={{width: '20%'}}>
                         <Button
                           onClick={() => {
-                            console.log('🔴 IMPORTED BUTTON CLICKED! Question:', question.id, 'Current status:', status);
                             const newStatus = status === 'COMPLETED' ? 'TODO' : 'COMPLETED';
-                            console.log('🔄 New status will be:', newStatus);
                             // Play sound for completion
                             if (newStatus === 'COMPLETED') {
-                                                             playQuestionCompletionSound(undefined, soundSettings?.soundsEnabled ?? true);
+                              playQuestionCompletionSound(undefined, soundSettings?.soundsEnabled ?? true);
                             }
                             updateProgress(question.id, newStatus);
                           }}

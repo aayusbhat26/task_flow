@@ -33,12 +33,16 @@ model User {
   totalTasksCompleted      Int                  @default(0)
   totalNotesCreated        Int                  @default(0)
   plan                     Plan                 @default(FREE)
+  billingInterval          BillingInterval?
+  planStartedAt            DateTime?
+  planExpiresAt            DateTime?
   stripeCurrentPeriodEnd   DateTime?
   stripeCustomerId         String?              @unique
   stripePriceId            String?
   stripeSubscriptionId     String?              @unique
   razorpayCustomerId       String?              @unique
   razorpaySubscriptionId   String?              @unique
+  billingOrders            BillingOrder[]
   accounts                 Account?
   calendarAttendees        CalendarAttendee[]
   calendarEvents           CalendarEvent[]
@@ -84,6 +88,9 @@ model User {
   savedMindMaps            savedMindMaps[]
   savedTask                savedTask[]
   groups                   Group[]              @relation("GroupMembers")
+  pollVotes                PollVote[]
+  hostedDsaRooms           DsaRoomSession[]     @relation("DsaRoomHost")
+  dsaRoomParticipants      DsaRoomParticipant[]
 }
 
 model Group {
@@ -176,31 +183,32 @@ model FileAttachment {
 }
 
 model Workspace {
-  id               String            @id @default(cuid())
-  name             String
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  creatorId        String?
-  image            String?
-  adminCode        String            @unique
-  canEditCode      String            @unique
-  inviteCode       String            @unique
-  readOnlyCode     String            @unique
-  color            CustomColors      @default(BLUE)
-  calendarEvents   CalendarEvent[]
-  chatMessages     ChatMessage[]
-  groups           Group[]
-  mindMaps         MindMap[]
-  notes            Note[]
-  notification     Notification[]
-  pomodoroSessions PomodoroSession[]
-  subscribers      Subscription[]
-  tags             Tag[]
-  tasks            Task[]
-  timeBlocks       TimeBlock[]
-  channels         Channel[]
+  id                String            @id @default(cuid())
+  name              String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  creatorId         String?
+  image             String?
+  adminCode         String            @unique
+  canEditCode       String            @unique
+  inviteCode        String            @unique
+  readOnlyCode      String            @unique
+  color             CustomColors      @default(BLUE)
+  calendarEvents    CalendarEvent[]
+  chatMessages      ChatMessage[]
+  groups            Group[]
+  mindMaps          MindMap[]
+  notes             Note[]
+  notification      Notification[]
+  pomodoroSessions  PomodoroSession[]
+  subscribers       Subscription[]
+  tags              Tag[]
+  tasks             Task[]
+  timeBlocks        TimeBlock[]
+  channels          Channel[]
   channelCategories ChannelCategory[]
-  Creator          User?             @relation("CreatedBy", fields: [creatorId], references: [id], onDelete: Cascade)
+  dsaRoomSessions   DsaRoomSession[]
+  Creator           User?             @relation("CreatedBy", fields: [creatorId], references: [id], onDelete: Cascade)
 }
 
 enum ChannelType {
@@ -226,21 +234,22 @@ model ChannelCategory {
 }
 
 model Channel {
-  id          String           @id @default(cuid())
-  name        String
-  type        ChannelType      @default(TEXT)
-  workspaceId String
-  categoryId  String?
-  order       Int              @default(0)
-  isReadOnly  Boolean          @default(false)
-  isNSFW      Boolean          @default(false)
-  isLocked    Boolean          @default(false)
-  slowMode    Int              @default(0) // seconds
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  messages    ChatMessage[]
-  category    ChannelCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  name            String
+  type            ChannelType      @default(TEXT)
+  workspaceId     String
+  categoryId      String?
+  order           Int              @default(0)
+  isReadOnly      Boolean          @default(false)
+  isNSFW          Boolean          @default(false)
+  isLocked        Boolean          @default(false)
+  slowMode        Int              @default(0) // seconds
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  messages        ChatMessage[]
+  category        ChannelCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  dsaRoomSessions DsaRoomSession[]
 
   @@index([workspaceId])
   @@index([categoryId])
@@ -286,6 +295,7 @@ model Task {
   assignedToTask assignedToTask[]
   savedTask      savedTask[]
   tags           Tag[]            @relation("TagToTask")
+  chatMessages   ChatMessage[]
 }
 
 model TaskDependency {
@@ -362,7 +372,7 @@ model UserSettings {
   questionCompletionSound CompletionSoundEffect @default(QUESTION_COMPLETE)
   soundVolume             Float                 @default(0.6)
   soundsEnabled           Boolean               @default(true)
-  showDSA                 Boolean               @default(false)
+  showDSA                 Boolean               @default(true)
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -512,6 +522,27 @@ model Subscription {
   @@id([userId, workspaceId])
 }
 
+model BillingOrder {
+  id                String             @id @default(cuid())
+  userId            String
+  tier              Plan
+  interval          BillingInterval
+  amount            Int
+  currency          String             @default("INR")
+  status            BillingOrderStatus @default(PENDING)
+  provider          BillingProvider    @default(INTERNAL)
+  providerOrderId   String?            @unique
+  providerPaymentId String?            @unique
+  receipt           String             @unique
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  paidAt            DateTime?
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
 model MindMap {
   id                String              @id @default(cuid())
   createdAt         DateTime            @default(now())
@@ -576,6 +607,10 @@ model ChatMessage {
   isDeleted   Boolean           @default(false)
   isEdited    Boolean           @default(false)
   readByIds   String[]          @default([])
+  type        ChatMessageType   @default(TEXT)
+  isPinned    Boolean           @default(false)
+  pinnedAt    DateTime?
+  taskId      String?
   author      User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
   group       Group?            @relation(fields: [groupId], references: [id], onDelete: Cascade)
   channel     Channel?          @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -585,6 +620,8 @@ model ChatMessage {
   attachments FileAttachment[]
   mentions    MessageMention[]
   reactions   MessageReaction[]
+  poll        Poll?
+  task        Task?             @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@index([groupId])
@@ -592,6 +629,8 @@ model ChatMessage {
   @@index([authorId])
   @@index([createdAt])
   @@index([replyToId])
+  @@index([isPinned])
+  @@index([taskId])
 }
 
 model MessageReaction {
@@ -620,6 +659,55 @@ model MessageMention {
   @@unique([messageId, userId])
   @@index([messageId])
   @@index([userId])
+}
+
+enum ChatMessageType {
+  TEXT
+  POLL
+  TASK
+  SYSTEM
+}
+
+model Poll {
+  id            String       @id @default(cuid())
+  messageId     String       @unique
+  question      String
+  allowMultiple Boolean      @default(false)
+  isAnonymous   Boolean      @default(false)
+  closesAt      DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime     @default(now())
+  message       ChatMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  options       PollOption[]
+  PollVote      PollVote[]
+
+  @@index([createdAt])
+}
+
+model PollOption {
+  id     String     @id @default(cuid())
+  pollId String
+  label  String
+  order  Int        @default(0)
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes  PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String     @id @default(cuid())
+  pollId    String
+  optionId  String
+  userId    String
+  createdAt DateTime   @default(now())
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, optionId, userId])
+  @@index([pollId, userId])
+  @@index([optionId])
 }
 
 model Note {
@@ -756,30 +844,31 @@ model UserSubmissionData {
 }
 
 model DSAQuestion {
-  id               String        @id @default(cuid())
+  id               String           @id @default(cuid())
   title            String
   description      String?
   topic            String
-  difficulty       Difficulty    @default(MEDIUM)
+  difficulty       Difficulty       @default(MEDIUM)
   leetcodeUrl      String?
-  platform         String        @default("LeetCode")
-  tags             String[]      @default([])
-  hints            String[]      @default([])
-  companies        String[]      @default([])
-  frequency        Int           @default(1)
+  platform         String           @default("LeetCode")
+  tags             String[]         @default([])
+  hints            String[]         @default([])
+  companies        String[]         @default([])
+  frequency        Int              @default(1)
   timeComplexity   String?
   spaceComplexity  String?
   approach         String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   importBatchId    String?
   importedAt       DateTime?
   importedBy       String?
-  isImported       Boolean       @default(false)
+  isImported       Boolean          @default(false)
   originalFileName String?
   importBatchName  String?
   progress         DSAProgress[]
-  importer         User?         @relation("ImportedDSAQuestions", fields: [importedBy], references: [id])
+  importer         User?            @relation("ImportedDSAQuestions", fields: [importedBy], references: [id])
+  roomSessions     DsaRoomSession[]
 
   @@index([topic])
   @@index([difficulty])
@@ -810,6 +899,50 @@ model DSAProgress {
   @@index([userId])
   @@index([questionId])
   @@index([status])
+}
+
+enum DsaRoomStatus {
+  ACTIVE
+  ENDED
+}
+
+model DsaRoomSession {
+  id              String               @id @default(cuid())
+  workspaceId     String
+  channelId       String
+  questionId      String
+  hostId          String
+  status          DsaRoomStatus        @default(ACTIVE)
+  durationMinutes Int
+  startedAt       DateTime             @default(now())
+  endsAt          DateTime
+  endedAt         DateTime?
+  createdAt       DateTime             @default(now())
+  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channel         Channel              @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  question        DSAQuestion          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  host            User                 @relation("DsaRoomHost", fields: [hostId], references: [id], onDelete: Cascade)
+  participants    DsaRoomParticipant[]
+
+  @@index([channelId, status])
+  @@index([workspaceId])
+  @@index([startedAt])
+}
+
+model DsaRoomParticipant {
+  id          String         @id @default(cuid())
+  sessionId   String
+  userId      String
+  joinedAt    DateTime       @default(now())
+  leftAt      DateTime?
+  completedAt DateTime?
+  timeSpent   Int            @default(0)
+  session     DsaRoomSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@index([sessionId])
 }
 
 model Achievement {
@@ -1060,6 +1193,24 @@ enum Plan {
   FREE
   PRO
   BUSINESS
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum BillingOrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum BillingProvider {
+  INTERNAL
+  RAZORPAY
+  STRIPE
 }
 
 enum RecurringType {

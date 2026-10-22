@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, getRandomColor } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -32,10 +32,7 @@ export const UserAvatar = ({
       {profileImage && !imageError ? (
         <Image src={profileImage} fill alt="Profile Avatar" priority onError={() => setImageError(true)} />
       ) : fallbackText ? (
-        <span className={cn(
-          "text-sm font-medium text-white w-full h-full flex items-center justify-center rounded-full",
-          userId ? getRandomColor(userId) : "bg-primary"
-        )}>
+        <span className="flex h-full w-full items-center justify-center rounded-full border border-border bg-secondary text-sm font-medium text-foreground">
           {fallbackText}
         </span>
       ) : (

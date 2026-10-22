@@ -5,6 +5,7 @@ import { AutosaveIndicatorProvider } from '@/context/AutosaveIndicator';
 import { useToast } from '@/hooks/use-toast';
 import { useSocket } from '@/context/SocketProvider';
 import { useCallback, useEffect, useState, useRef } from 'react';
+import { Menu } from 'lucide-react';
 import { TipTapNoteEditor } from './TipTapNoteEditor';
 import { EnhancedNotesSidebar } from './EnhancedNotesSidebar';
 import { NotesWelcome } from './NotesWelcome';
@@ -90,6 +91,7 @@ interface NotesAppProps {
 export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [allNotes, setAllNotes] = useState<Note[]>(notes);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -628,21 +630,43 @@ export function NotesApp({ notes, workspaces, currentUser, groupId }: NotesAppPr
 
   return (
     <AutosaveIndicatorProvider>
-      <div className="flex h-screen bg-background overflow-hidden">
-        <EnhancedNotesSidebar
-          notes={allNotes}
-          workspaces={workspaces}
-          currentUser={currentUser}
-          selectedNote={selectedNote}
-          collapsed={sidebarCollapsed}
-          onNoteSelect={handleNoteSelect}
-          onNoteCreate={handleNoteCreate}
-          onNoteUpdate={handleNoteUpdate}
-          onNoteDelete={handleNoteDelete}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          isCreating={isCreating}
-        />
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="relative flex h-full overflow-hidden bg-background">
+        {mobileSidebarOpen && (
+          <div
+            className="absolute inset-0 z-20 bg-foreground/30 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+        )}
+        <div
+          className={`absolute inset-y-0 left-0 z-30 w-[86vw] max-w-[320px] transform bg-background transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 ${
+            mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <EnhancedNotesSidebar
+            notes={allNotes}
+            workspaces={workspaces}
+            currentUser={currentUser}
+            selectedNote={selectedNote}
+            collapsed={sidebarCollapsed}
+            onNoteSelect={(note) => {
+              handleNoteSelect(note as any);
+              setMobileSidebarOpen(false);
+            }}
+            onNoteCreate={handleNoteCreate}
+            onNoteUpdate={handleNoteUpdate}
+            onNoteDelete={handleNoteDelete}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            isCreating={isCreating}
+          />
+        </div>
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="absolute left-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center border border-border bg-background text-muted-foreground lg:hidden"
+            aria-label="Open notes list"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
           {selectedNote ? (
               <TipTapNoteEditor
               note={selectedNote}

@@ -29,12 +29,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const pathsToSoundEffects = {
-  ANALOG: "/music/analog.mp3",
-  BELL: "/music/bell.mp3",
-  BIRD: "/music/bird.mp3",
-  CHURCH_BELL: "/music/churchBell.mp3",
-  DIGITAL: "/music/digital.mp3",
-  FANCY: "/music/fancy.mp3",
+  ANALOG: "/music/analog.wav",
+  BELL: "/music/bell.wav",
+  BIRD: "/music/bird.wav",
+  CHURCH_BELL: "/music/churchBell.wav",
+  DIGITAL: "/music/digital.wav",
+  FANCY: "/music/fancy.wav",
 } as const;
 
 export const topSidebarLinks = [
@@ -91,41 +91,16 @@ export const topSidebarLinks = [
 
 export const getMonth = (month = dayjs().month()) => {
   const year = dayjs().year();
+  const firstOfMonth = dayjs(new Date(year, month, 1));
+  const mondayOffset = (firstOfMonth.day() + 6) % 7;
+  const gridStart = firstOfMonth.subtract(mondayOffset, "day");
 
-  const firstDayOfMonth = dayjs(new Date(year, month, 1)).day();
-
-  let currentMonthCount = 1 - firstDayOfMonth;
-
-  const daysMatrix = new Array(5).fill([]).map((_, weekIdx) => {
-    return new Array(7).fill(null).map((_, dayIdx) => {
-      currentMonthCount++;
-      const date = dayjs(new Date(year, month, currentMonthCount));
-      return {
-        date,
-        mapIndex: { weekIdx, dayIdx },
-      };
-    });
-  });
-
-  if (firstDayOfMonth === 1) {
-    const firstWeek = daysMatrix[0];
-    const previousMonth = month === 0 ? 11 : month - 1;
-    const previousYear = month === 0 ? year - 1 : year;
-    const lastDayOfPreviousMonth = dayjs(
-      new Date(year, previousMonth + 1, 0)
-    ).date();
-
-    for (let i = 7 - firstWeek.length; i > 0; i--) {
-      const day = lastDayOfPreviousMonth - i + 1;
-      // Always return an object with date and mapIndex
-      firstWeek.unshift({
-        date: dayjs(new Date(previousYear, previousMonth, day)),
-        mapIndex: { weekIdx: 0, dayIdx: i - 1 },
-      });
-    }
-  }
-
-  return daysMatrix;
+  return Array.from({ length: 6 }, (_, weekIdx) =>
+    Array.from({ length: 7 }, (_, dayIdx) => ({
+      date: gridStart.add(weekIdx * 7 + dayIdx, "day"),
+      mapIndex: { weekIdx, dayIdx },
+    }))
+  );
 };
 
 export const scrollToHash = (elementId: string) => {

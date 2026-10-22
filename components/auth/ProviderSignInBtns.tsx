@@ -1,63 +1,66 @@
-import { AppleLogo } from "../svg/AppleLogo";
+"use client";
+
 import { GithubLogo } from "../svg/GithubLogo";
 import { GoogleLogo } from "../svg/GoogleLogo";
 import { ProviderSignInBtn } from "./ProviderSignInBtn";
 import { useTranslations } from "next-intl";
+import type { OAuthProviderAvailability } from "@/lib/auth";
+
+const providers = [
+  {
+    id: "google" as const,
+    icon: (props: { width: number; height: number; className?: string }) => (
+      <GoogleLogo {...props} />
+    ),
+  },
+  {
+    id: "github" as const,
+    icon: (props: { width: number; height: number; className?: string }) => (
+      <GithubLogo {...props} />
+    ),
+  },
+];
 
 export const ProviderSignInBtns = ({
   signInCard,
   disabled,
   onLoading,
+  oauthProviders,
 }: {
   signInCard?: boolean;
   disabled?: boolean;
   onLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  oauthProviders: OAuthProviderAvailability;
 }) => {
   const t = useTranslations("AUTH");
+
   return (
     <div className="grid grid-cols-1 gap-2">
-      <ProviderSignInBtn
-        disabled={disabled}
-        onLoading={onLoading}
-        providerName="google"
-        className="w-full h-10 bg-background border border-border/40 hover:border-primary/40 hover:bg-muted/50 rounded-xl text-sm font-medium transition-all duration-200 group"
-      >
-        <GoogleLogo className="mr-2 group-hover:scale-110 transition-transform duration-200" width={18} height={18} />
-        <span className="flex-1 text-left">
-          {signInCard
-            ? t("SIGN_IN.PROVIDERS.GOOGLE")
-            : t("SIGN_UP.PROVIDERS.GOOGLE")}
-        </span>
-      </ProviderSignInBtn>
-      
-      <ProviderSignInBtn
-        disabled={disabled}
-        onLoading={onLoading}
-        providerName="github"
-        className="w-full h-10 bg-background border border-border/40 hover:border-primary/40 hover:bg-muted/50 rounded-xl text-sm font-medium transition-all duration-200 group"
-      >
-        <GithubLogo className="fill-foreground mr-2 group-hover:scale-110 transition-transform duration-200" width={18} height={18} />
-        <span className="flex-1 text-left">
-          {signInCard
-            ? t("SIGN_IN.PROVIDERS.GITHUB")
-            : t("SIGN_UP.PROVIDERS.GITHUB")}
-        </span>
-      </ProviderSignInBtn>
+      {providers.map((provider) => {
+        const configured = oauthProviders[provider.id];
+        const label = t(
+          `${signInCard ? "SIGN_IN" : "SIGN_UP"}.PROVIDERS.${provider.id.toUpperCase()}`
+        );
 
-      {/* Optional Apple Sign In */}
-      {/* <ProviderSignInBtn
-        disabled={disabled}
-        onLoading={onLoading}
-        providerName="apple"
-        className="w-full h-10 bg-black/90 hover:bg-black/80 dark:bg-black/70 dark:hover:bg-black/60 text-white rounded-xl text-sm font-medium transition-all duration-200 group"
-      >
-        <AppleLogo className="fill-white mr-2 group-hover:scale-110 transition-transform duration-200" width={18} height={18} />
-        <span className="flex-1 text-left">
-          {signInCard
-            ? t("SIGN_IN.PROVIDERS.APPLE")
-            : t("SIGN_UP.PROVIDERS.APPLE")}
-        </span>
-      </ProviderSignInBtn> */}
+        return (
+          <ProviderSignInBtn
+            key={provider.id}
+            disabled={disabled}
+            onLoading={onLoading}
+            providerName={provider.id}
+            configured={configured}
+            className="h-10 w-full justify-start rounded-sm border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-secondary"
+          >
+            {provider.icon({ width: 16, height: 16, className: "mr-3" })}
+            <span className="flex-1 text-left">{label}</span>
+            {!configured && (
+              <span className="font-mono text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
+                Setup needed
+              </span>
+            )}
+          </ProviderSignInBtn>
+        );
+      })}
     </div>
   );
 };

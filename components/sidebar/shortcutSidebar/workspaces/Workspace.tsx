@@ -1,107 +1,67 @@
 "use client";
 
 import ActiveLink from "@/components/ui/active-link";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { Workspace, CustomColors } from "@prisma/client";
 import Image from "next/image";
-import { useMemo, useState, useEffect } from "react";
-import { useRouteLoading } from "@/hooks/useRouteLoading";
-import { usePathname } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { useLocale } from "next-intl";
 
 interface Props {
   workspace: Workspace;
   href: string;
 }
 
+const colorClasses: Record<CustomColors, string> = {
+  BLUE: "bg-[#415a77]",
+  EMERALD: "bg-[#3f6150]",
+  LIME: "bg-[#69703a]",
+  ORANGE: "bg-[#965d3b]",
+  PINK: "bg-[#8f5560]",
+  YELLOW: "bg-[#8a7131]",
+  RED: "bg-[#7d3f3f]",
+  PURPLE: "bg-[#5c4a6b]",
+  GREEN: "bg-[#46624a]",
+  CYAN: "bg-[#3f6266]",
+  INDIGO: "bg-[#464f73]",
+  FUCHSIA: "bg-[#744a63]",
+};
+
 export const WorkspaceComponent = ({
   workspace: { id, image, name, color },
   href,
 }: Props) => {
-  const { startLoading } = useRouteLoading();
-  const [isLoading, setIsLoading] = useState(false);
-  const pathname = usePathname();
-  
-  // Reset loading state when route changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 100); // Small delay to ensure route change is detected
-    
-    return () => clearTimeout(timer);
-  }, [pathname]);
-  
-  const workspaceColor = useMemo(() => {
-    switch (color) {
-      case CustomColors.BLUE:
-        return "bg-blue-600 hover:bg-blue-500";
-      case CustomColors.EMERALD:
-        return "bg-emerald-600 hover:bg-emerald-500";
-      case CustomColors.LIME:
-        return "bg-lime-600 hover:bg-lime-500";
-      case CustomColors.ORANGE:
-        return "bg-orange-600 hover:bg-orange-500";
-      case CustomColors.PINK:
-        return "bg-pink-600 hover:bg-pibk-500";
-      case CustomColors.YELLOW:
-        return "bg-yellow-600 hover:bg-yellow-500";
-      case CustomColors.RED:
-        return "bg-red-600 hover:bg-red-500";
-      case CustomColors.PURPLE:
-        return "bg-purple-600 hover:bg-purple-500";
-      case CustomColors.GREEN:
-        return "bg-green-600 hover:bg-green-500";
-      case CustomColors.CYAN:
-        return "bg-cyan-600 hover:bg-cyan-500";
-      case CustomColors.INDIGO:
-        return "bg-indigo-600 hover:bg-indigo-500";
-      case CustomColors.FUCHSIA:
-        return "bg-fuchsia-600 hover:bg-fuchsia-500";
-      default:
-        return "bg-blue-600 hover:bg-blue-500";
-    }
-  }, [color]);
-
-  const handleWorkspaceClick = () => {
-    setIsLoading(true);
-    startLoading();
-  };
+  const locale = useLocale();
+  const workspaceColor = colorClasses[color] ?? colorClasses.BLUE;
 
   return (
-    <HoverCard openDelay={250} closeDelay={250}>
-      <HoverCardTrigger asChild>
-        <ActiveLink
-          include={`/${href}/${id}`}
-          workspaceIcon
-          className={`text-white font-bold ${!image && workspaceColor}`}
-          variant={image ? "ghost" : "default"}
-          href={`${href}/${id}`}
-          size={"icon"}
-          onClick={handleWorkspaceClick}
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white" />
-          ) : image ? (
-            <Image
-              priority
-              className="w-full h-full object-cover rounded-md"
-              src={image}
-              alt="workspace image"
-              height={300}
-              width={300}
-            />
-          ) : (
-            <p>{name[0].toUpperCase()}</p>
-          )}
-        </ActiveLink>
-      </HoverCardTrigger>
-      <HoverCardContent align="start">
-        <span>{name}</span>
-      </HoverCardContent>
-    </HoverCard>
+    <div className="flex w-full flex-col items-center gap-1">
+      <ActiveLink
+        include={`${href}/${id}`}
+        workspaceIcon
+        className={`h-9 w-9 text-[11px] font-medium text-white ${
+          image ? "border border-border" : workspaceColor
+        }`}
+        variant={image ? "ghost" : "default"}
+        href={`/${locale}${href}/${id}`}
+        size="icon"
+        title={name}
+        aria-label={name}
+      >
+        {image ? (
+          <Image
+            priority
+            className="h-full w-full object-cover"
+            src={image}
+            alt=""
+            height={80}
+            width={80}
+          />
+        ) : (
+          <span>{name[0]?.toUpperCase()}</span>
+        )}
+      </ActiveLink>
+      <span className="w-full truncate px-1 text-center text-[8px] leading-none text-muted-foreground lg:hidden">
+        {name}
+      </span>
+    </div>
   );
 };

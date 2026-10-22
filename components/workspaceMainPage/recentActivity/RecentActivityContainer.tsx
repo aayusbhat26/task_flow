@@ -110,9 +110,9 @@ export const RecentActivityContainer = ({ userId, workspaceId }: Props) => {
     return <ClientError message={t("ERROR")} />;
   } else {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between w-full">
-          <CardTitle className="text-xl sm:text-2xl font-bold">{t("TITLE")}</CardTitle>
+      <Card className="mt-6">
+        <CardHeader className="flex w-full flex-row items-center justify-between border-b border-border px-6 py-5">
+          <CardTitle className="font-display text-2xl font-normal">{t("TITLE")}</CardTitle>
           <div className="flex items-center gap-1">
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
@@ -134,8 +134,8 @@ export const RecentActivityContainer = ({ userId, workspaceId }: Props) => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="w-full flex flex-col gap-2">
+        <CardContent className="px-6 py-0">
+          <div className="flex w-full flex-col">
             {isLoading ? (
               <div className="space-y-4">
                 {[...Array(5)].map((_, i) => (
@@ -155,7 +155,7 @@ export const RecentActivityContainer = ({ userId, workspaceId }: Props) => {
             ) : recentActivity && recentActivity.length > 0 ? (
               activityItems && activityItems.length > 0 ? (
                 <>
-                  <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full" : "w-full flex flex-col gap-2"}>
+                  <div className={viewMode === "grid" ? "grid w-full grid-cols-1 gap-4 py-4 sm:grid-cols-2 lg:grid-cols-3" : "flex w-full flex-col"}>
                     {activityItems.slice(0, isExpanded ? undefined : 5).map((activity) => (
                       <RecentActivityItem key={activity.id} activity={activity} viewMode={viewMode} />
                     ))}

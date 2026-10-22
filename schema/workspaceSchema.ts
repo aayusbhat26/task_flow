@@ -28,9 +28,10 @@ export const color = z.enum([
 
 const workspaceName = z
   .string()
-  .min(4, "Workspace name must be at least 4 characters")
-  .max(20, "SCHEMA.WORKSPACE.LONG")
-  .refine((username) => /^[a-zA-Z0-9]+$/.test(username), {
+  .trim()
+  .min(2, "Workspace name must be at least 2 characters")
+  .max(40, "SCHEMA.WORKSPACE.LONG")
+  .refine((name) => /^[\p{L}\p{N}][\p{L}\p{N} _.-]*$/u.test(name), {
     message: "SCHEMA.WORKSPACE.SPECIAL_CHARS",
   });
 
@@ -42,8 +43,10 @@ export const workspaceSchema = z.object({
 export const apiWorkspaceSchema = z.object({
   workspaceName: z
     .string()
-    .min(4, "Workspace name must be at least 4 characters")
-    .refine((username) => /^[a-zA-Z0-9]+$/.test(username), {
+    .trim()
+    .min(2, "Workspace name must be at least 2 characters")
+    .max(40, "SCHEMA.WORKSPACE.LONG")
+    .refine((name) => /^[\p{L}\p{N}][\p{L}\p{N} _.-]*$/u.test(name), {
       message: "SCHEMA.WORKSPACE.SPECIAL_CHARS",
     }),
   file: z.string().optional().nullable(),

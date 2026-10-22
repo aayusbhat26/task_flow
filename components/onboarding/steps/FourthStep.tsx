@@ -17,6 +17,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { z } from "zod";
 
 // Schema for external service usernames
@@ -35,6 +36,7 @@ export const FourthStep = () => {
   const { dispatch, name, surname, profileImage, useCase, workspaceName, workspaceImage } = useOnboardingForm();
   const { toast } = useToast();
   const router = useRouter();
+  const { update } = useSession();
   const t = useTranslations("ONBOARDING_FORM");
 
   const form = useForm<ExternalServicesSchema>({
@@ -92,21 +94,25 @@ export const FourthStep = () => {
         body: JSON.stringify(onboardingData),
       });
 
-      if (response.ok) {
-        toast({
-          title: "Onboarding completed successfully!",
-          description: "Welcome to TaskFlow!",
-        });
-        // Redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        throw new Error("Failed to complete onboarding");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(
+          payload?.error || payload?.message || "Failed to complete onboarding"
+        );
       }
+
+      toast({
+        title: "Onboarding completed",
+        description: "Your workspace is ready.",
+      });
+      await update();
+      router.push("/dashboard");
+      router.refresh();
     } catch (error) {
-      console.error("Onboarding error:", error);
       toast({
         title: "Failed to complete onboarding",
-        description: "Please try again",
+        description:
+          error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
     } finally {
@@ -116,18 +122,18 @@ export const FourthStep = () => {
 
   return (
     <>
-      <div className="flex flex-col justify-center items-center gap-4 w-full mt-10 text-center">
-        <h2 className="font-bold text-4xl md:text-5xl max-w-xs">
-          <span className="text-primary font-semibold">Connect</span>
-        </h2>
-        <p className="max-w-lg text-muted-foreground">
-          Connect your external service accounts (optional)
-        </p>
-      </div>
-      
-      <div className="max-w-md w-full space-y-8 mt-14">
+      <p className="eyebrow mb-3">Step 04 — Connect</p>
+      <h2 className="font-display text-4xl leading-[1.05] sm:text-5xl">
+        Bring your profiles.
+      </h2>
+      <p className="mt-3 max-w-[380px] text-sm leading-relaxed text-muted-foreground">
+        Optional. Adding handles lets practice progress line up with the work
+        you do elsewhere. You can add them later in settings.
+      </p>
+
+      <div className="mt-8 w-full max-w-md space-y-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="leetcodeUsername"
@@ -246,7 +252,7 @@ export const FourthStep = () => {
                   <div>Completing onboarding...</div>
                 ) : (
                   <>
-                    Complete Setup
+                    Finish setup
                     <ArrowRight width={18} height={18} />
                   </>
                 )}

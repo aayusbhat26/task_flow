@@ -75,11 +75,9 @@ export const HomeRecentActivityContainer = ({ userId, initialData }: Props) => {
 
   if (activityItems.length === 0) {
     return (
-      <div className="flex flex-col gap-4 sm:gap-6 w-full mt-16 sm:mt-40 items-center">
-        <div className="text-primary">
-          <Activity size={66} />
-        </div>
-        <p className="font-semibold text-lg sm:text-2xl max-w-3xl text-center">
+      <div className="flex items-start gap-4 py-8">
+        <Activity size={18} className="mt-0.5 shrink-0 text-muted-foreground" />
+        <p className="max-w-[420px] text-[13px] leading-relaxed text-muted-foreground">
           {t("NO_DATA")}
         </p>
       </div>
@@ -112,7 +110,7 @@ export const HomeRecentActivityContainer = ({ userId, initialData }: Props) => {
       {(data?.pages.flatMap((page) => page) ?? initialData).length > 3 && (
         <Button 
           variant="ghost" 
-          className="w-full mt-2 text-muted-foreground hover:text-foreground"
+          className="mt-2 w-full border-t border-border text-xs text-muted-foreground hover:text-foreground"
           onClick={() => setShowAll(!showAll)}
         >
           {showAll ? (

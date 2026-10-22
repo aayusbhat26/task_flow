@@ -537,14 +537,13 @@ export const MindMap = ({
           )}
 
           <Background />
-          <MiniMap 
-            nodeColor={(n) => {
-              if (n.data?.color) return '#a8a29e';
-              return '#444';
-            }}
-            maskColor="rgba(0,0,0,0.4)"
-            className="bg-background rounded-md shadow-md border"
-          />
+          {nodes.length > 0 && (
+            <MiniMap
+              nodeColor={(n) => (n.data?.color ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))")}
+              maskColor="rgba(20, 19, 16, 0.45)"
+              className="rounded-sm border border-border bg-card"
+            />
+          )}
         </ReactFlow>
       </div>
     </div>

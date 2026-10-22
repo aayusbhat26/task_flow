@@ -1,35 +1,31 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
 import Warning from "@/components/ui/warning";
 import { useTranslations } from "next-intl";
 import { ChangePassword } from "./ChangePassword";
 
 export const SecurityCard = () => {
   const t = useTranslations("SETTINGS.SECURITY");
+
   return (
-    <Card className="bg-background border-none shadow-none">
-      <CardHeader>
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
+    <div>
+      <div className="border-b border-border pb-6">
+        <p className="eyebrow">Settings</p>
+        <h1 className="mt-2 font-display text-4xl leading-none">
           {t("TITLE")}
         </h1>
-        <CardDescription className="text-base max-w-3xl break-words">
+        <p className="mt-3 max-w-[560px] text-sm leading-relaxed text-muted-foreground">
           {t("DESC")}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Warning blue className="my-0 mb-6 sm:mb-10">
-          <p>{t("WARNING.FIRST")}</p>
-          <span className="font-bold">{t("WARNING.SECOND")}</span>
+        </p>
+      </div>
+      <Warning blue className="mt-6">
+        <p>
+          {t("WARNING.FIRST")}
+          {t("WARNING.SECOND")}
           {t("WARNING.THIRD")}
-          <span className="font-bold">{t("WARNING.FOURTH")}</span>
-          {t("WARNING.FIFTH")}
-        </Warning>
+        </p>
+      </Warning>
+      <div className="mt-8">
         <ChangePassword />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

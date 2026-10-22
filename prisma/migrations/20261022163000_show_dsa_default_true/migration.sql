@@ -1,0 +1,1 @@
+ALTER TABLE "UserSettings" ALTER COLUMN "showDSA" SET DEFAULT true;

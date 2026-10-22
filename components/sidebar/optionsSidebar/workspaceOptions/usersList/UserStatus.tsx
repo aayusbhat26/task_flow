@@ -14,13 +14,13 @@ export const UserStatus = ({ image, username, maxText, active }: Props) => {
   const name = useTruncateText(username, maxText!);
   return (
     <div
-      className={`flex items-center bg-background gap-2 hover:bg-accent rounded-sm px-2 py-1 duration-200 transition-colors ${
+      className={`flex items-center gap-2 rounded-sm bg-background px-1.5 py-1 transition-colors hover:bg-secondary ${
         !active ? "opacity-50" : ""
       }`}
     >
       <div className="relative">
         <UserAvatar
-          className="w-8 h-8 sm:w-10 sm:h-10"
+          className="h-7 w-7"
           profileImage={image}
           fallbackText={username ? username[0].toUpperCase() : "?"}
           userId={username}
@@ -30,7 +30,7 @@ export const UserStatus = ({ image, username, maxText, active }: Props) => {
           <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-border shadow-sm border-2 bg-primary"></div>
         )}
       </div>
-      <p className="text-primary text-sm sm:text-base break-words">{name}</p>
+      <p className="truncate text-[12px] text-muted-foreground">{username}</p>
     </div>
   );
 };

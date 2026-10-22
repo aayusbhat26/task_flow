@@ -2,7 +2,7 @@
 
 import { useGetAssignedToMeParams } from "@/hooks/useGetAssignedToMeParams";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader } from "../ui/card";
+
 import { AssignedToMeItem } from "./AssignedToMeItem";
 import { AssignedToMeDataItem } from "@/types/extended";
 import { LoadingScreen } from "../common/LoadingScreen";
@@ -57,28 +57,28 @@ export const AssignedToMeContainer = ({ userId }: Props) => {
   }
 
   return (
-    <Card className="bg-background border-none shadow-none">
-      <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto w-full max-w-[1000px]">
+      <div className="border-b border-border pb-5 sm:flex sm:items-end sm:justify-between">
         <div className="flex flex-col space-y-1.5 mb-4 sm:mb-0">
-          <h1 className="text-2xl font-semibold leading-none tracking-tight">
+          <h1 className="font-display text-3xl leading-none sm:text-4xl">
             {t("TITLE")}
           </h1>
-          <CardDescription className="text-base">{t("DESC")}</CardDescription>
+          <p className="text-sm text-muted-foreground">{t("DESC")}</p>
         </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      </div>
+      <div className="mt-2 flex flex-col">
         {currentType === "all" &&
         workspaceFilterParam === "all" &&
         assignedInfo?.length === 0 ? (
-          <p>{t("NO_ASSIGNMENT")}</p>
+          <p className="mt-6 border border-border bg-card px-6 py-8 text-sm leading-relaxed text-muted-foreground">{t("NO_ASSIGNMENT")}</p>
         ) : assignedInfo?.length === 0 ? (
-          <p>{t("NOT_FOUND")}</p>
+          <p className="mt-6 border border-border bg-card px-6 py-8 text-sm leading-relaxed text-muted-foreground">{t("NOT_FOUND")}</p>
         ) : (
           assignedInfo?.map((info) => (
             <AssignedToMeItem info={info} key={info.id} />
           ))
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

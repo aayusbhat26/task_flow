@@ -53,7 +53,7 @@ const Workspace = async ({ params: { workspace_id } }: Params) => {
         {userRole !== "OWNER" && <LeaveWorkspace workspace={workspace} />}
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <main className="flex flex-col gap-2 w-full px-4 sm:px-6">
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-2 px-5 py-2 sm:px-8">
         <ShortcutContainer workspace={workspace} userRole={userRole} />
         <FilterContainer sessionUserId={session.user.id} />
         <RecentActivityContainer

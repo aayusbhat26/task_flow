@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { pollInclude, serializePoll, serializeTask, taskMessageSelect } from "@/lib/chat-rich";
 
 // GET /api/chat/messages?workspaceId=xxx
 export async function GET(request: NextRequest) {
@@ -56,6 +57,12 @@ export async function GET(request: NextRequest) {
       whereClause.channelId = null;
     }
 
+    // The main conversation shows only top-level messages. Thread replies are
+    // fetched separately so they cannot push recent messages out of the window.
+    if (!threadId) {
+      whereClause.replyToId = null;
+    }
+
     // Fetch messages
     const messages = await db.chatMessage.findMany({
       where: whereClause,
@@ -84,17 +91,41 @@ export async function GET(request: NextRequest) {
             author: { select: { username: true, name: true } }
           }
         },
+        // Latest participants power the thread preview under each message.
+        replies: {
+          take: 3,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            createdAt: true,
+            author: {
+              select: { id: true, name: true, username: true, image: true },
+            },
+          },
+        },
+        poll: {
+          include: pollInclude(session.user.id),
+        },
+        task: {
+          select: taskMessageSelect,
+        },
         _count: {
           select: { replies: true }
         }
       },
       orderBy: {
-        createdAt: "asc",
+        createdAt: "desc",
       },
-      take: 100, // Limit to last 100 messages
+      take: 100, // Latest 100 messages
     });
 
-    return NextResponse.json(messages);
+    const payload = messages.map(message => ({
+      ...message,
+      poll: serializePoll(message.poll),
+      task: serializeTask(message.task),
+    }));
+
+    return NextResponse.json([...payload].reverse());
   } catch (error) {
     console.error("Error fetching messages:", error);
     return NextResponse.json(
@@ -108,15 +139,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    console.log("Session:", JSON.stringify(session, null, 2));
 
     if (!session?.user?.id) {
-      console.log("No session or user ID found");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    console.log("Request body:", body);
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const { content, workspaceId, groupId, channelId, attachments, replyToId } = body;
 
     if ((!content && (!attachments || attachments.length === 0)) || (!workspaceId && !groupId && !channelId)) {
@@ -162,8 +195,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (channelId) {
+      const channel = await db.channel.findUnique({
+        where: { id: channelId },
+        select: { id: true, workspaceId: true },
+      });
+
+      if (!channel) {
+        return NextResponse.json({ error: "Channel not found" }, { status: 404 });
+      }
+
+      const subscription = await db.subscription.findFirst({
+        where: { userId: session.user.id, workspaceId: channel.workspaceId },
+      });
+
+      if (!subscription) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
+
       data.channelId = channelId;
-      data.workspaceId = workspaceId;
+      data.workspaceId = channel.workspaceId;
     } else if (groupId) {
       // Verify user has access to this group
       const group = await db.group.findFirst({

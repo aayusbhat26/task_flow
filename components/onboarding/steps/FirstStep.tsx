@@ -58,14 +58,19 @@ export const FirstStep = ({ profileImage }: Props) => {
 
   return (
     <>
-      <h2 className="font-bold text-4xl md:text-5xl flex flex-col items-center my-10">
-        <span>{t("FIRST_STEP.TITLE.FIRST")}</span>
-        <span>{t("FIRST_STEP.TITLE.SECOND")}</span>
+      <p className="eyebrow mb-3">Step 01 — Profile</p>
+      <h2 className="font-display text-4xl leading-[1.05] sm:text-5xl">
+        Who&apos;s doing the work?
       </h2>
-      <div className="max-w-md w-full space-y-8">
-        <div className="w-full flex flex-col justify-center items-center gap-2">
-          <p>{t("FIRST_STEP.PHOTO")}</p>
-          <AddUserImage profileImage={profileImage} />
+      <p className="mt-3 max-w-[360px] text-sm leading-relaxed text-muted-foreground">
+        Add your name. A photo is optional and can be changed later.
+      </p>
+      <div className="mt-8 w-full space-y-8">
+        <div className="flex w-full flex-col items-start gap-2">
+          <AddUserImage
+            profileImage={profileImage}
+            className="h-16 w-16 border border-border md:h-20 md:w-20"
+          />
         </div>
 
         <Form {...form}>

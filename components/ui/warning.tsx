@@ -14,29 +14,36 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
 const Warning = React.forwardRef<HTMLDivElement, Props>(
   ({ className, children, hideIcon, yellow, blue, ...props }: Props, ref) => {
     const t = useTranslations("COMMON");
+
     return (
       <div
         ref={ref}
         className={cn(
-          `my-4 px-4 py-2 border-destructive border rounded-md shadow-sm bg-destructive/80 dark:bg-destructive/40 text-secondary-foreground flex flex-col gap-2 ${
-            yellow ? "bg-yellow-400/10 border-yellow-400" : "bg-destructive/10"
-          } ${blue ? "bg-blue-400/10 border-blue-400" : "bg-destructive/10"}`,
+          "my-4 flex flex-col gap-2 border border-border border-l-2 bg-secondary/40 px-4 py-3 text-foreground",
+          yellow
+            ? "border-l-chart-3"
+            : blue
+              ? "border-l-primary"
+              : "border-l-destructive",
           className
         )}
         {...props}
       >
         {!hideIcon && (
-          <div
-            className={`flex items-center gap-2 font-semibold ${
-              yellow ? "text-yellow-400" : "text-destructive"
-            } ${blue ? "text-blue-400" : "text-destructive"}`}
-          >
-            {blue ? <Info /> : <AlertTriangle />}
-
-            <p>{blue ? t("NOTICE") : t("WARNING")}</p>
+          <div className="flex items-center gap-2">
+            {blue ? (
+              <Info className="h-3.5 w-3.5 text-primary" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+            )}
+            <p className="eyebrow">
+              {blue ? t("NOTICE") : t("WARNING")}
+            </p>
           </div>
         )}
-        <div>{children}</div>
+        <div className="text-[13px] leading-relaxed text-muted-foreground">
+          {children}
+        </div>
       </div>
     );
   }

@@ -132,7 +132,7 @@ export function MediaChannelView({ channel, workspace, currentUser, onOpenMobile
               avatarSize, size === 'lg' ? 'mb-4' : 'mb-2', "ring-4 transition-all duration-300",
               !state.isMuted ? "ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]" : "ring-muted-foreground/20"
             )}>
-              <AvatarImage src={user.image || ""} />
+              <AvatarImage src={user.image || undefined} />
               <AvatarFallback className={cn(textSize, "font-bold", getRandomColor(user.id))}>
                 {user.name?.charAt(0) || user.username?.charAt(0)}
               </AvatarFallback>
@@ -283,7 +283,7 @@ export function MediaChannelView({ channel, workspace, currentUser, onOpenMobile
                 return (
                   <div key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
                     <Avatar className={cn("h-8 w-8 ring-2", !state.isMuted ? "ring-green-500" : "ring-transparent")}>
-                      <AvatarImage src={user.image || ""} />
+                      <AvatarImage src={user.image || undefined} />
                       <AvatarFallback className={cn("text-xs font-bold", getRandomColor(user.id))}>
                         {user.name?.charAt(0) || user.username?.charAt(0)}
                       </AvatarFallback>

@@ -59,7 +59,7 @@ const Task = async ({ params: { workspace_id, task_id } }: Params) => {
         )}
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <main className="flex flex-col gap-2">
+      <main className="px-5 py-8 sm:px-8">
         <ReadOnlyContent
           task={task}
           isSavedByUser={isSavedByUser}

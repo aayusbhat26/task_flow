@@ -26,7 +26,9 @@ import {
   RefreshCw,
   Flag
 } from 'lucide-react';
-import { cn, getRandomColor } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { useLocale } from 'next-intl';
+import Link from 'next/link';
 import { playTaskCompletionSound } from '@/lib/soundEffects';
 import { useTasks } from '@/hooks/useTasks';
 
@@ -62,6 +64,7 @@ interface Task {
   };
   isCompleted?: boolean;
   priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  workspace?: { id: string; name: string };
 }
 
 interface TasksModalProps {
@@ -70,34 +73,26 @@ interface TasksModalProps {
 }
 
 export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
+  const locale = useLocale();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCompleted, setFilterCompleted] = useState<'all' | 'completed' | 'pending'>('all');
   const [isOpen, setIsOpen] = useState(false);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isExpanded, setIsExpanded] = useState(false);
-  const { tasks, loading, error, fetchTasks, completeTask, refreshTasks } = useTasks();
+  const { tasks, loading, error, stats, pagination, fetchTasks, completeTask } = useTasks();
 
-  // Fetch tasks when modal opens and poll for updates
   useEffect(() => {
-    if (isOpen && workspaceId) {
-      // Fetch all tasks initially
+    if (!isOpen) return;
+    const timer = window.setTimeout(() => {
       fetchTasks({
         workspaceId,
-        filter: 'all'
+        search: searchQuery.trim() || undefined,
+        filter: filterCompleted,
       });
-      
-      // Poll every 5 seconds for updates while modal is open
-      const intervalId = setInterval(() => {
-        fetchTasks({
-          workspaceId,
-          filter: 'all'
-        });
-      }, 5000);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [isOpen, workspaceId]); // Remove fetchTasks from dependencies to prevent loops
+    }, searchQuery ? 250 : 0);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, workspaceId, searchQuery, filterCompleted, fetchTasks]);
 
   // Client-side filtering for better performance and no race conditions
   const filteredTasks = tasks.filter(task => {
@@ -117,8 +112,14 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
     return matchesSearch && matchesCompletion;
   });
 
-  const completedCount = tasks.filter(task => task.isCompleted).length;
-  const totalCount = tasks.length;
+  const completedCount = stats.completed;
+  const totalCount = stats.total;
+  const reload = () =>
+    fetchTasks({
+      workspaceId,
+      search: searchQuery.trim() || undefined,
+      filter: filterCompleted,
+    });
   const filteredCompletedCount = filteredTasks.filter(task => task.isCompleted).length;
   const filteredTotalCount = filteredTasks.length;
 
@@ -155,9 +156,14 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" className="gap-2">
-            <List className="w-4 h-4" />
-            View All Tasks
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="All tasks"
+            aria-label="All tasks"
+          >
+            <List className="h-4 w-4" />
           </Button>
         )}
       </DialogTrigger>
@@ -231,7 +237,7 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={refreshTasks}
+                onClick={reload}
                 disabled={loading}
               >
                 <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
@@ -258,7 +264,7 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={refreshTasks}
+                    onClick={reload}
                   >
                     Try Again
                   </Button>
@@ -311,12 +317,21 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <span className="text-lg">{renderEmoji(task.emoji)}</span>
-                                <h3 className={cn(
-                                  "font-medium truncate",
-                                  isCompleted && "line-through text-muted-foreground"
-                                )}>
-                                  {task.title}
-                                </h3>
+                                <Link
+                                  href={`/${locale}/dashboard/workspace/${task.workspaceId}/tasks/task/${task.id}`}
+                                  onClick={() => setIsOpen(false)}
+                                  className={cn(
+                                    "truncate text-[13px] font-medium hover:underline hover:underline-offset-4",
+                                    isCompleted && "text-muted-foreground line-through"
+                                  )}
+                                >
+                                  {task.title || "Untitled task"}
+                                </Link>
+                                {task.workspace?.name && (
+                                  <span className="hidden shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground sm:inline">
+                                    {task.workspace.name}
+                                  </span>
+                                )}
                               </div>
 
                               {/* Due Date */}
@@ -367,8 +382,8 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                                 <div className="flex items-center gap-1">
                                   <Avatar className="w-5 h-5">
                                     <AvatarImage src={task.creator.image} />
-                                    <AvatarFallback className={cn("text-[10px] text-white font-semibold", getRandomColor(task.creator.id))}>
-                                      {task.creator.name.charAt(0)}
+                                    <AvatarFallback className="bg-secondary text-[10px] font-semibold text-foreground">
+                                      {task.creator.name?.charAt(0) || "U"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <span className="text-xs">{task.creator.name}</span>
@@ -392,8 +407,8 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                                     {task.assignedToTask.slice(0, 3).map((assigned, index) => (
                                       <Avatar key={assigned.user.id} className="w-5 h-5 border-2 border-background">
                                         <AvatarImage src={assigned.user.image} />
-                                        <AvatarFallback className={cn("text-[10px] text-white font-semibold", getRandomColor(assigned.user.id))}>
-                                          {assigned.user.name.charAt(0)}
+                                        <AvatarFallback className="bg-secondary text-[10px] font-semibold text-foreground">
+                                          {assigned.user.name?.charAt(0) || "U"}
                                         </AvatarFallback>
                                       </Avatar>
                                     ))}
@@ -423,6 +438,28 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
                     </Button>
                   </div>
                 )}
+                {pagination.hasMore && (
+                  <div className={cn("pt-1 pb-4", viewMode === 'grid' && "col-span-1 sm:col-span-2")}>
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      disabled={loading}
+                      onClick={() =>
+                        fetchTasks({
+                          workspaceId,
+                          search: searchQuery.trim() || undefined,
+                          filter: filterCompleted,
+                          offset: tasks.length,
+                          append: true,
+                        })
+                      }
+                    >
+                      {loading
+                        ? "Loading…"
+                        : `Load more (${pagination.total - tasks.length} remaining)`}
+                    </Button>
+                  </div>
+                )}
               </>
             )}
             </div>
@@ -431,7 +468,7 @@ export function TasksModal({ workspaceId, trigger }: TasksModalProps) {
           {/* Footer */}
           <div className="flex items-center justify-center pt-4 border-t">
             <div className="text-sm text-muted-foreground">
-              Showing {filteredTasks.length} task(s)
+              Showing {filteredTasks.length} of {pagination.total} matching task(s)
             </div>
           </div>
         </div>

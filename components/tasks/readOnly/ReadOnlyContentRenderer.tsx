@@ -20,7 +20,7 @@ export const ReadOnlyContentRenderer = ({ content }: Props) => {
       },
       attributes: {
         class:
-          "focus:outline-none prose prose-headings:text-secondary-foreground prose-p:text-secondary-foreground prose-strong:text-secondary-foreground prose-a:text-primary prose-a:no-underline prose-a:cursor-pointer w-full focus-visible:outline-none rounded-md max-w-none prose-code:text-secondary-foreground prose-code:bg-muted prose-ol:text-secondary-foreground prose-ul:text-secondary-foreground prose-li:marker:text-secondary-foreground prose-li:marker:font-bold prose-h1:text-5xl prose-h2:text-4xl prose-h3:text-3xl prose-h4:text-2xl prose-h5:text-xl prose-h6:text-lg prose-p:text-base prose-headings:line-clamp-1 prose-headings:mt-0 prose-p:my-2",
+          "focus:outline-none prose prose-stone dark:prose-invert w-full max-w-none rounded-sm focus-visible:outline-none prose-headings:font-display prose-headings:font-normal prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground prose-a:text-primary prose-a:underline prose-a:underline-offset-2 prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:font-normal prose-code:text-foreground prose-blockquote:border-l-primary prose-blockquote:font-display prose-blockquote:text-lg prose-blockquote:not-italic prose-ol:text-foreground/90 prose-ul:text-foreground/90 prose-li:marker:text-muted-foreground prose-h1:text-4xl prose-h2:text-3xl prose-h3:text-2xl prose-h4:text-xl prose-h5:text-lg prose-h6:text-base prose-p:text-[15px] prose-p:leading-7 prose-p:my-2",
       },
     },
     editable: false, // Make it read-only
@@ -48,11 +48,11 @@ export const ReadOnlyContentRenderer = ({ content }: Props) => {
 
   if (isEmpty) {
     return (
-      <div className="w-full min-h-[200px] flex items-center justify-center text-muted-foreground">
-        <div className="text-center">
-          <p className="text-lg font-medium">No content available</p>
-          <p className="text-sm">This task doesn't have any content yet.</p>
-        </div>
+      <div className="flex min-h-[160px] w-full items-start text-muted-foreground">
+        <p className="text-[13px]">
+          No description yet. Open the task to add context, notes or a
+          checklist.
+        </p>
       </div>
     );
   }

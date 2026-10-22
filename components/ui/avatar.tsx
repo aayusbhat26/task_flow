@@ -26,13 +26,28 @@ interface AvatarImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 }
 
 const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
-  ({ className, ...props }, ref) => (
-    <img
-      ref={ref}
-      className={cn("aspect-square h-full w-full object-cover", className)}
-      {...props}
-    />
-  )
+  ({ className, src, onError, ...props }, ref) => {
+    const [failed, setFailed] = React.useState(false);
+
+    React.useEffect(() => {
+      setFailed(false);
+    }, [src]);
+
+    if (!src || failed) return null;
+
+    return (
+      <img
+        ref={ref}
+        src={src}
+        onError={(event) => {
+          setFailed(true);
+          onError?.(event);
+        }}
+        className={cn("aspect-square h-full w-full object-cover", className)}
+        {...props}
+      />
+    );
+  }
 )
 AvatarImage.displayName = "AvatarImage"
 

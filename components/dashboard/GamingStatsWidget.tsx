@@ -1,8 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Target, Award, TrendingUp, Star, Medal } from 'lucide-react';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useLocale } from "next-intl";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowUpRight } from "lucide-react";
 
 interface AchievementStats {
   totalAchievements: number;
@@ -15,11 +17,7 @@ interface AchievementStats {
   rarityStats: Record<string, number>;
 }
 
-interface AchievementStatsWidgetProps {
-  stats?: AchievementStats;
-}
-
-const defaultStats: AchievementStats = {
+const emptyStats: AchievementStats = {
   totalAchievements: 0,
   completedAchievements: 0,
   inProgressAchievements: 0,
@@ -27,136 +25,81 @@ const defaultStats: AchievementStats = {
   completionPercentage: 0,
   totalPointsFromAchievements: 0,
   categoryStats: {},
-  rarityStats: {}
+  rarityStats: {},
 };
 
-const AchievementStatsWidget: React.FC<AchievementStatsWidgetProps> = ({ stats = defaultStats }) => {
-  const [achievementStats, setAchievementStats] = useState<AchievementStats>(defaultStats);
+export default function GamingStatsWidget() {
+  const [stats, setStats] = useState<AchievementStats>(emptyStats);
   const [loading, setLoading] = useState(true);
+  const locale = useLocale();
 
   useEffect(() => {
-    const fetchAchievementStats = async () => {
-      try {
-        const response = await fetch('/api/gaming/achievements/stats');
-        if (response.ok) {
-          const data = await response.json();
-          setAchievementStats(data);
-        }
-      } catch (error) {
-        console.error('Error fetching achievement stats:', error);
-      } finally {
-        setLoading(false);
-      }
+    let active = true;
+    fetch("/api/gaming/achievements/stats")
+      .then((res) => (res.ok ? res.json() : emptyStats))
+      .then((data) => {
+        if (active) setStats({ ...emptyStats, ...data });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
     };
-
-    fetchAchievementStats();
   }, []);
 
-  const displayStats = stats !== defaultStats ? stats : achievementStats;
-
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-primary" />
-          Achievements
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow">Milestones</p>
+            <h2 className="mt-2 font-display text-2xl leading-none">
+              Achievements
+            </h2>
+          </div>
+          <Link
+            href={`/${locale}/gaming`}
+            className="inline-flex h-8 items-center gap-1.5 border border-border px-3 text-xs transition-colors hover:bg-secondary"
+          >
+            View all
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+
         {loading ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="h-4 bg-muted rounded animate-pulse"></div>
-                <div className="h-8 bg-muted rounded animate-pulse"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-4 bg-muted rounded animate-pulse"></div>
-                <div className="h-8 bg-muted rounded animate-pulse"></div>
-              </div>
-            </div>
+          <div className="mt-6 grid grid-cols-3 gap-4">
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="h-12 animate-pulse bg-muted/60" />
+            ))}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Medal className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Total Unlocked</span>
-                </div>
-                <div className="text-2xl font-bold text-primary">{displayStats.completedAchievements}</div>
+            <div className="mt-6 grid grid-cols-3 divide-x divide-border border-y border-border">
+              <div className="py-4 pr-4">
+                <p className="font-mono text-xl">{stats.completedAchievements}</p>
+                <p className="eyebrow mt-1">Unlocked</p>
               </div>
-              
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Completion</span>
-                </div>
-                <div className="text-2xl font-bold text-accent-foreground">{displayStats.completionPercentage}%</div>
+              <div className="px-4 py-4">
+                <p className="font-mono text-xl">{stats.completionPercentage}%</p>
+                <p className="eyebrow mt-1">Complete</p>
+              </div>
+              <div className="py-4 pl-4">
+                <p className="font-mono text-xl">{stats.totalPointsFromAchievements}</p>
+                <p className="eyebrow mt-1">Points earned</p>
               </div>
             </div>
-
-            {displayStats.totalAchievements === 0 ? (
-              <div className="text-center py-4">
-                <div className="text-muted-foreground text-sm">
-                  No achievements available yet. Complete tasks, solve problems, and use pomodoro sessions to unlock achievements!
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted rounded-lg p-3">
-                    <div className="text-sm text-muted-foreground">Recent (7 days)</div>
-                    <div className="text-xl font-semibold text-primary">{displayStats.recentAchievements}</div>
-                  </div>
-                  
-                  <div className="bg-muted rounded-lg p-3">
-                    <div className="text-sm text-muted-foreground">In Progress</div>
-                    <div className="text-xl font-semibold text-accent-foreground">{displayStats.inProgressAchievements}</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Available</span>
-                    </div>
-                    <div className="text-lg font-semibold text-muted-foreground">{displayStats.totalAchievements}</div>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Star className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Points Earned</span>
-                    </div>
-                    <div className="text-lg font-semibold text-primary">{displayStats.totalPointsFromAchievements}</div>
-                  </div>
-                </div>
-
-                {Object.keys(displayStats.categoryStats).length > 0 && (
-                  <div className="border-t border-border pt-3 mt-4">
-                    <div className="text-sm text-muted-foreground mb-2">Top Categories</div>
-                    <div className="space-y-1">
-                      {Object.entries(displayStats.categoryStats)
-                        .sort(([,a], [,b]) => b - a)
-                        .slice(0, 3)
-                        .map(([category, count]) => (
-                          <div key={category} className="flex justify-between text-sm">
-                            <span className="text-muted-foreground capitalize">{category.toLowerCase().replace('_', ' ')}</span>
-                            <span className="font-medium text-foreground">{count}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
+              {stats.totalAchievements === 0
+                ? "No milestones are available yet. Complete tasks, focus rounds and practice problems to unlock the first one."
+                : `${
+                    stats.totalAchievements - stats.completedAchievements
+                  } milestones remain. Small, consistent work counts.`}
+            </p>
           </>
         )}
       </CardContent>
     </Card>
   );
-};
-
-export default AchievementStatsWidget;
+}

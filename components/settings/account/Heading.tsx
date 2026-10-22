@@ -1,19 +1,17 @@
-import { Card, CardDescription, CardHeader } from "@/components/ui/card";
 import { useTranslations } from "next-intl";
 
 export const Heading = () => {
   const t = useTranslations("SETTINGS");
 
   return (
-    <Card className="bg-background border-none shadow-none">
-      <CardHeader>
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          {t("ACCOUNT.TITLE")}
-        </h1>
-        <CardDescription className="text-base">
-          {t("ACCOUNT.DESC")}
-        </CardDescription>
-      </CardHeader>
-    </Card>
+    <div className="border-b border-border pb-6">
+      <p className="eyebrow">Settings</p>
+      <h1 className="mt-2 font-display text-4xl leading-none">
+        {t("ACCOUNT.TITLE")}
+      </h1>
+      <p className="mt-3 max-w-[520px] text-sm leading-relaxed text-muted-foreground">
+        {t("ACCOUNT.DESC")}
+      </p>
+    </div>
   );
 };

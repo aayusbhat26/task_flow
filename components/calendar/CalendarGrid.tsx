@@ -27,29 +27,32 @@ export const CalendarGrid = ({
   const t = useTranslations("CALENDAR.DAYS_OF_WEEK");
 
   return (
-    <>
-      <div className="w-full h-full flex flex-col gap-3">
-        <div className="w-full grid grid-cols-7 text-right">
-          {daysOfWeek.map((day, index) => (
-            <p className="mr-2 font-semibold text-sm">{t(day)}</p>
-          ))}
-        </div>
-        <div className="w-full h-full grid grid-cols-7 grid-rows-5">
-          {currMonth.map((row, i) => (
-            <Fragment key={i}>
-              {row.map((cell, idx) => (
-                <Day
-                  key={idx}
-                  monthIndex={monthIndex}
-                  day={cell.date}
-                  mapIndex={cell.mapIndex}
-                  calendarItems={calendarItems}
-                />
-              ))}
-            </Fragment>
-          ))}
-        </div>
+    <div className="flex h-full w-full flex-col">
+      <div className="grid w-full grid-cols-7 border-l border-t border-border">
+        {daysOfWeek.map((day) => (
+          <p
+            key={day}
+            className="border-b border-r border-border px-2 py-2 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground"
+          >
+            {t(day)}
+          </p>
+        ))}
       </div>
-    </>
+      <div className="grid w-full flex-1 grid-cols-7">
+        {currMonth.map((row, i) => (
+          <Fragment key={i}>
+            {row.map((cell, idx) => (
+              <Day
+                key={idx}
+                monthIndex={monthIndex}
+                day={cell.date}
+                mapIndex={cell.mapIndex}
+                calendarItems={calendarItems}
+              />
+            ))}
+          </Fragment>
+        ))}
+      </div>
+    </div>
   );
 };

@@ -6,6 +6,7 @@ import { NotesApp } from '@/components/notes/NotesApp';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, MessageSquare, FileText } from 'lucide-react';
 import { GroupMembersSettings } from '@/components/groups/GroupMembersSettings';
+import { effectivePlan } from '@/lib/billing';
 
 interface PageProps {
   params: {
@@ -19,7 +20,7 @@ export default async function GroupPage({ params }: PageProps) {
   const session = await getAuthSession();
 
   if (!session?.user) {
-    redirect('/sign-in');
+    redirect(`/${params.locale}/sign-in`);
   }
 
   const group = await db.group.findUnique({
@@ -160,7 +161,10 @@ export default async function GroupPage({ params }: PageProps) {
     email: session.user.email || '',
     image: session.user.image,
     username: session.user.username || '',
-    plan: session.user.plan || 'FREE',
+    plan: effectivePlan({
+      plan: session.user.plan,
+      planExpiresAt: session.user.planExpiresAt,
+    }),
   };
 
   return (

@@ -23,16 +23,16 @@ import { useSoundSettings } from "@/hooks/useSoundSettings";
 
 // Sound effect mapping
 const soundEffectPaths: Record<CompletionSoundEffect, string> = {
-  SUCCESS: "/sounds/bell.mp3",
-  ACHIEVEMENT: "/sounds/fancy.mp3",
-  TASK_COMPLETE: "/sounds/digital.mp3",
-  QUESTION_COMPLETE: "/sounds/analog.mp3",
-  BELL: "/sounds/bell.mp3",
-  DIGITAL: "/sounds/digital.mp3",
-  BIRD: "/sounds/bird.mp3",
-  FANCY: "/sounds/fancy.mp3",
-  ANALOG: "/sounds/analog.mp3",
-  CHURCH_BELL: "/sounds/churchBell.mp3",
+  SUCCESS: "/sounds/bell.wav",
+  ACHIEVEMENT: "/sounds/fancy.wav",
+  TASK_COMPLETE: "/sounds/digital.wav",
+  QUESTION_COMPLETE: "/sounds/analog.wav",
+  BELL: "/sounds/bell.wav",
+  DIGITAL: "/sounds/digital.wav",
+  BIRD: "/sounds/bird.wav",
+  FANCY: "/sounds/fancy.wav",
+  ANALOG: "/sounds/analog.wav",
+  CHURCH_BELL: "/sounds/churchBell.wav",
 };
 
 // Schema for form validation
@@ -229,7 +229,9 @@ export const SoundSettingsForm = ({ userSettings }: Props) => {
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder={t("TASK_SOUND.PLACEHOLDER")} />
+                            <SelectValue placeholder={t("TASK_SOUND.PLACEHOLDER")}>
+                              {t(`SOUND_EFFECTS.${field.value}`)}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -276,7 +278,9 @@ export const SoundSettingsForm = ({ userSettings }: Props) => {
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder={t("QUESTION_SOUND.PLACEHOLDER")} />
+                            <SelectValue placeholder={t("QUESTION_SOUND.PLACEHOLDER")}>
+                              {t(`SOUND_EFFECTS.${field.value}`)}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

@@ -1,5 +1,5 @@
 import { AuthCard } from "@/components/auth/AuthCard";
-import { getAuthSession } from "@/lib/auth";
+import { getAuthSession, getConfiguredOAuthProviders } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function SignUpPage() {
@@ -7,5 +7,5 @@ export default async function SignUpPage() {
   if (session) {
     redirect("/dashboard");
   }
-  return <AuthCard />;
+  return <AuthCard oauthProviders={getConfiguredOAuthProviders()} />;
 }

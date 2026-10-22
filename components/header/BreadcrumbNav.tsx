@@ -1,17 +1,34 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useTranslations } from "next-intl";
-// import { usePathname } from "next/navigation";
-import {usePathname} from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
-const availableRoutesWithTranslation = [
-  "dashboard",
-  "settings",
-  "security",
-  "theme",
-];
+const routeLabels: Record<string, string> = {
+  dashboard: "Home",
+  settings: "Settings",
+  security: "Security",
+  theme: "Appearance",
+  sound: "Sound",
+  notes: "Notes",
+  pomodoro: "Pomodoro",
+  calendar: "Calendar",
+  starred: "Starred",
+  "assigned-to-me": "Assigned to me",
+  "solved-questions": "Solved questions",
+  dsa: "DSA practice",
+  gaming: "Achievements",
+  chat: "Chat",
+};
+
+const dynamicLabels: Record<string, string> = {
+  workspace: "",
+  task: "Task",
+  "mind-map": "Mind map",
+  channel: "Channel",
+  invite: "Invite",
+};
 
 interface Props {
   addManualRoutes?: {
@@ -23,81 +40,92 @@ interface Props {
   workspaceHref?: string;
 }
 
-export const BreadcrumbNav = ({ addManualRoutes, workspaceHref }: Props) => {
-  const paths = usePathname();
-  const pathNames = paths
-    .split("/")
-    .filter(
-      (path) => path !== "te" && path !== "workspace" && path.trim() !== ""
-    );
+const titleCase = (value: string) =>
+  value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+export const BreadcrumbNav = ({ addManualRoutes }: Props) => {
+  const pathname = usePathname();
+  const locale = useLocale();
   const t = useTranslations("ROUTES");
 
-  if (pathNames.length > 1) {
+  const withLocale = (href: string) =>
+    href.startsWith(`/${locale}`) ? href : `/${locale}${href.startsWith("/") ? href : `/${href}`}`;
+
+  const rawSegments = pathname
+    .split("/")
+    .filter(Boolean)
+    .filter((segment) => segment !== locale)
+    .filter((segment) => segment !== "workspace");
+
+  const segments = rawSegments.filter((segment) => !/^c[a-z0-9]{20,}$/i.test(segment));
+
+  if (addManualRoutes?.length) {
     return (
-      <>
-        {addManualRoutes ? (
-          <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-center">
-            {addManualRoutes.map((route, i) => {
-              return (
-                <div
-                  className="flex items-center sm:gap-0.5 text-sm sm:text-base"
-                  key={i}
-                >
-                  {i + 1 < addManualRoutes.length ? (
-                    <>
-                      <Link
-                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background rounded-md sm:px-2 px-1 py-1 transition-colors duration-200 hover:bg-accent"
-                        href={route.href}
-                      >
-                        {route.useTranslate ? t(route.name) : route.name}
-                      </Link>
-                      <ChevronRight className="text-primary" />
-                    </>
-                  ) : (
-                    <p className="font-bold text-primary sm:px-2 px-1">
-                      {route.emoji && route.emoji}
-                      {route.useTranslate ? t(route.name) : route.name}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-start gap-0.5 text-sm sm:text-base sm:flex-row sm:items-center">
-            {pathNames.map((link, i) => {
-              const href = `/${pathNames.slice(0, i + 1).join("/")}`;
-              return (
-                <div className="flex flex-wrap items-center gap-0.5" key={i}>
-                  {i + 1 < pathNames.length ? (
-                    <>
-                      <Link
-                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background rounded-md sm:px-2 px-1 py-1 transition-colors duration-200 hover:bg-accent"
-                        href={
-                          workspaceHref && pathNames.length - 1
-                            ? workspaceHref
-                            : href
-                        }
-                      >
-                        {availableRoutesWithTranslation.includes(link)
-                          ? t(link.toUpperCase())
-                          : link}
-                      </Link>
-                      <ChevronRight className="text-primary" />
-                    </>
-                  ) : (
-                    <p className="font-bold text-primary sm:px-2 px-1">
-                      {availableRoutesWithTranslation.includes(link)
-                        ? t(link.toUpperCase())
-                        : link}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </>
+      <nav aria-label="Breadcrumb" className="min-w-0">
+        <ol className="flex items-center gap-1 text-[13px] text-muted-foreground">
+          {addManualRoutes.map((route, index) => {
+            const isLast = index === addManualRoutes.length - 1;
+            const label = route.useTranslate ? t(route.name) : route.name;
+            return (
+              <li key={`${route.href}-${index}`} className="flex min-w-0 items-center gap-1">
+                {!isLast ? (
+                  <>
+                    <Link
+                      href={withLocale(route.href)}
+                      className="truncate transition-colors hover:text-foreground"
+                    >
+                      {label}
+                    </Link>
+                    <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                  </>
+                ) : (
+                  <span className="truncate font-medium text-foreground">
+                    {route.emoji && <span className="mr-1">{route.emoji}</span>}
+                    {label}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
     );
   }
+
+  if (segments.length <= 1) return null;
+
+  return (
+    <nav aria-label="Breadcrumb" className="min-w-0">
+      <ol className="flex items-center gap-1 text-[13px] text-muted-foreground">
+        {segments.map((segment, index) => {
+          const isLast = index === segments.length - 1;
+          const label = routeLabels[segment] ?? titleCase(segment);
+          const href = "/" + ["dashboard", ...segments.slice(1, index + 1)].join("/");
+
+          if (dynamicLabels[segment] === "" && !isLast) return null;
+
+          return (
+            <li key={`${segment}-${index}`} className="flex min-w-0 items-center gap-1">
+              {!isLast ? (
+                <>
+                  <Link
+                    href={withLocale(href)}
+                    className="truncate transition-colors hover:text-foreground"
+                  >
+                    {label}
+                  </Link>
+                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                </>
+              ) : (
+                <span className="truncate font-medium text-foreground">{label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
 };

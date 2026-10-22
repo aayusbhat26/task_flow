@@ -18,6 +18,19 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "Segoe UI", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        display: ["var(--font-instrument-serif)", "Georgia", "serif"],
+        serif: ["var(--font-instrument-serif)", "Georgia", "serif"],
+      },
+      boxShadow: {
+        sm: "0 1px 0 0 hsl(var(--foreground) / 0.04)",
+        DEFAULT: "0 1px 2px 0 hsl(var(--foreground) / 0.05)",
+        md: "0 2px 6px -2px hsl(var(--foreground) / 0.08)",
+        lg: "0 16px 40px -24px hsl(var(--foreground) / 0.25)",
+        xl: "0 24px 60px -30px hsl(var(--foreground) / 0.3)",
+      },
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -62,8 +75,11 @@ const config: Config = {
       },
       borderRadius: {
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        md: "calc(var(--radius) - 1px)",
+        sm: "calc(var(--radius) - 2px)",
+        xl: "calc(var(--radius) + 2px)",
+        "2xl": "calc(var(--radius) + 4px)",
+        "3xl": "calc(var(--radius) + 6px)",
       },
     },
   },

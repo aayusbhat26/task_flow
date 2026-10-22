@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Workspace } from "@prisma/client";
 import { LayoutGrid } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { AssignedToMeWorkspace } from "./AssignedToMeWorkspace";
 import { useGetAssignedToMeParams } from "@/hooks/useGetAssignedToMeParams";
 import { useState } from "react";
@@ -32,15 +33,16 @@ const RADIO_OPTIONS = [
 export const AssignedToMeFilter = ({ userWorkspaces }: Props) => {
   const { currentType, workspaceFilterParam } = useGetAssignedToMeParams();
   const router = useRouter();
+  const locale = useLocale();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRadioChange = async (value: "all" | "tasks" | "mind-maps") => {
     setIsLoading(true);
-    let link = "/dashboard/assigned-to-me";
+    let link = `/${locale}/dashboard/assigned-to-me`;
 
     workspaceFilterParam
-      ? (link = `/dashboard/assigned-to-me?workspace=${workspaceFilterParam}&type=${value}`)
-      : (link = `/dashboard/assigned-to-me?workspace=all&type=${value}`);
+      ? (link = `/${locale}/dashboard/assigned-to-me?workspace=${workspaceFilterParam}&type=${value}`)
+      : (link = `/${locale}/dashboard/assigned-to-me?workspace=all&type=${value}`);
 
     await router.replace(link);
     setIsLoading(false);
@@ -48,10 +50,10 @@ export const AssignedToMeFilter = ({ userWorkspaces }: Props) => {
   return (
     <div className="flex flex-col gap-6 w-full">
       <div>
-        <p className="text-xs sm:text-sm uppercase text-muted-foreground">
+        <p className="eyebrow">
           Type
         </p>
-        <div className="flex flex-col gap-2 w-full mt-2">
+        <div className="flex w-full flex-col gap-0.5">
           <RadioGroup
             value={currentType}
             onValueChange={handleRadioChange}
@@ -84,12 +86,12 @@ export const AssignedToMeFilter = ({ userWorkspaces }: Props) => {
       </div>
 
       <div>
-        <p className="text-xs sm:text-sm uppercase text-muted-foreground">
+        <p className="eyebrow">
           Workspace
         </p>
         <div className="flex flex-col gap-2 w-full mt-2">
           <ActiveLink
-            href={`/dashboard/assigned-to-me?workspace=all&type=${currentType}`}
+            href={`/${locale}/dashboard/assigned-to-me?workspace=all&type=${currentType}`}
             variant={"ghost"}
             size={"sm"}
             className={`w-full flex justify-start items-center gap-2 overflow-hidden ${
@@ -100,11 +102,11 @@ export const AssignedToMeFilter = ({ userWorkspaces }: Props) => {
             disableActiveStateColor
           >
             <div
-              className={`rounded-md bg-primary text-white font-bold h-7 w-7 flex justify-center items-center`}
+              className="flex h-7 w-7 items-center justify-center bg-foreground text-background"
             >
               <LayoutGrid size={18} />
             </div>
-            <p>Workspace</p>
+            <p>All workspaces</p>
           </ActiveLink>
           {userWorkspaces.map((workspace) => (
             <AssignedToMeWorkspace

@@ -71,15 +71,18 @@ export const ThirdStep = () => {
 
   return (
     <>
-      <div className="flex flex-col justify-center items-center gap-4 w-full my-10 text-center">
-        <h2 className="font-bold text-4xl md:text-5xl max-w-md">
-          {t("THIRD_STEP.TITLE")}
-        </h2>
-      </div>
+      <p className="eyebrow mb-3">Step 03 — Workspace</p>
+      <h2 className="font-display text-4xl leading-[1.05] sm:text-5xl">
+        Name the workspace.
+      </h2>
+      <p className="mt-3 max-w-[360px] text-sm leading-relaxed text-muted-foreground">
+        This is the shared room for your tasks, notes and maps. You can rename
+        it later.
+      </p>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="w-full max-w-md space-y-8 mt-12"
+          className="mt-8 w-full max-w-md space-y-6"
         >
           <div className="space-y-1.5">
             <FormField
@@ -124,7 +127,7 @@ export const ThirdStep = () => {
             <Button
               disabled={isUploading}
               type="submit"
-              className="flex-1 mt-10 max-w-md dark:text-white font-semibold"
+              className="h-10 flex-1"
             >
               {isUploading ? (
                 <LoadingState />

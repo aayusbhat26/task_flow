@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,7 +15,24 @@ import {
 import { cn } from '@/lib/utils';
 import { useSocket } from '@/context/SocketProvider';
 import { useUploadThing } from '@/lib/uploadthing';
+import { useTheme } from 'next-themes';
 import { X, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  SlashCommandMenu,
+  getSlashCommands,
+  type SlashCommandDefinition,
+  type SlashCommandId,
+} from './SlashCommandMenu';
+import { PollComposer } from './PollComposer';
+import { TaskComposer } from './TaskComposer';
 
 interface CurrentUser {
   id: string;
@@ -54,14 +71,20 @@ interface ChatInputProps {
   workspaceId: string;
   groupId?: string;
   channelId?: string;
+  threadId?: string;
   currentUser: CurrentUser;
   replyingTo?: Message | null;
   onCancelReply?: () => void;
   onOptimisticMessage?: (message: Message) => void;
   onMessageConfirmed?: (tempId: string, realMessage: Message) => void;
+  onMessageFailed?: (tempId: string) => void;
+  onExternalMessage?: (message: any) => void;
+  onOpenBrief?: () => void;
+  onOpenDsaRoom?: () => void;
+  showReplyingTo?: boolean;
 }
 
-export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyingTo, onCancelReply, onOptimisticMessage, onMessageConfirmed }: ChatInputProps) {
+export function ChatInput({ workspaceId, groupId, channelId, threadId, currentUser, replyingTo, onCancelReply, onOptimisticMessage, onMessageConfirmed, onMessageFailed, onExternalMessage, onOpenBrief, onOpenDsaRoom, showReplyingTo = true }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -69,11 +92,133 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { socket } = useSocket();
+  const { resolvedTheme } = useTheme();
+  const { toast } = useToast();
+  const roomId = channelId || groupId || workspaceId;
 
   const [workspaceUsers, setWorkspaceUsers] = useState<CurrentUser[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [showCommands, setShowCommands] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [commandIndex, setCommandIndex] = useState(0);
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollSeed, setPollSeed] = useState('');
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [taskSeed, setTaskSeed] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const availableCommandIds = useMemo(() => {
+    const ids: SlashCommandId[] = ['poll', 'task', 'help'];
+    if (onOpenBrief) ids.push('brief');
+    if (onOpenDsaRoom) ids.push('dsa');
+    return ids;
+  }, [onOpenBrief, onOpenDsaRoom]);
+
+  const allCommands = useMemo(
+    () => getSlashCommands(availableCommandIds),
+    [availableCommandIds]
+  );
+
+  const filteredCommands = useMemo(() => {
+    const query = commandQuery.toLowerCase();
+    if (!query) return allCommands;
+    return allCommands.filter(command =>
+      command.label.slice(1).startsWith(query) || command.hint.toLowerCase().includes(query)
+    );
+  }, [allCommands, commandQuery]);
+
+  useEffect(() => {
+    setCommandIndex(0);
+  }, [commandQuery]);
+
+  const clearInput = () => {
+    setMessage('');
+    setShowCommands(false);
+    setCommandQuery('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+  };
+
+  const stopTyping = () => {
+    if (socket) {
+      socket.emit('typing-stop', { workspaceId: roomId, threadId });
+    }
+  };
+
+  const executeCommand = (command: SlashCommandDefinition, argument = '') => {
+    stopTyping();
+    switch (command.id) {
+      case 'poll':
+        setPollSeed(argument);
+        setPollOpen(true);
+        clearInput();
+        break;
+      case 'task':
+        setTaskSeed(argument);
+        setTaskOpen(true);
+        clearInput();
+        break;
+      case 'brief':
+        if (onOpenBrief) onOpenBrief();
+        clearInput();
+        break;
+      case 'dsa':
+        if (onOpenDsaRoom) onOpenDsaRoom();
+        clearInput();
+        break;
+      case 'help':
+        setHelpOpen(true);
+        clearInput();
+        break;
+    }
+  };
+
+  const runSlashCommand = (text: string) => {
+    if (text === '/') {
+      clearInput();
+      return true;
+    }
+
+    const match = text.match(/^\/([a-z]+)(?:\s+([\s\S]*))?$/i);
+    if (!match) return false;
+
+    const id = match[1].toLowerCase() as SlashCommandId;
+    const argument = (match[2] || '').trim();
+
+    if (!availableCommandIds.includes(id)) {
+      toast({
+        title: `/${id} is not available here`,
+        description: 'Try /poll or /task in this conversation.',
+      });
+      return true;
+    }
+
+    const command = allCommands.find(item => item.id === id);
+    if (!command) {
+      toast({
+        title: 'Unknown command',
+        description: 'Type / to see the available commands.',
+      });
+      return true;
+    }
+
+    executeCommand(command, argument);
+    return true;
+  };
+
+  const handleExternalCreated = (created: any) => {
+    onExternalMessage?.(created);
+    if (socket) {
+      socket.emit('message-created', {
+        workspaceId: roomId,
+        message: created,
+      });
+    }
+    onCancelReply?.();
+  };
 
   useEffect(() => {
     if (workspaceId) {
@@ -123,21 +268,40 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
     }
   }, [message]);
 
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (socket && roomId) {
+        socket.emit('typing-stop', { workspaceId: roomId, threadId });
+      }
+    };
+  }, [socket, roomId, threadId]);
+
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setMessage(val);
 
     // Handle typing indicators
-    if (socket && (workspaceId || groupId)) {
-      socket.emit('typing-start', { workspaceId: groupId || workspaceId });
-      
+    if (socket && roomId) {
+      socket.emit('typing-start', { workspaceId: roomId, threadId });
+
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
       
       typingTimeoutRef.current = setTimeout(() => {
-        socket.emit('typing-stop', { workspaceId: groupId || workspaceId });
+        socket.emit('typing-stop', { workspaceId: roomId, threadId });
       }, 2000);
+    }
+
+    const commandMatch = val.match(/^\/([a-z]*)$/i);
+    if (commandMatch) {
+      setShowCommands(true);
+      setCommandQuery(commandMatch[1]);
+      setShowMentions(false);
+    } else {
+      setShowCommands(false);
+      setCommandQuery('');
     }
 
     const cursorPosition = e.target.selectionStart;
@@ -180,9 +344,12 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
 
   const sendMessage = async () => {
     const trimmedMessage = message.trim();
+    if (isSending) return;
+    if (trimmedMessage.startsWith('/') && runSlashCommand(trimmedMessage)) return;
     if ((!trimmedMessage && attachments.length === 0) || (!workspaceId && !groupId && !channelId)) return;
 
     const tempId = `temp-${Date.now()}`;
+    const currentAttachments = [...attachments];
     const optimisticMessage: Message = {
       id: tempId,
       content: trimmedMessage || null,
@@ -193,7 +360,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
         username: currentUser.username,
         image: currentUser.image,
       },
-      attachments,
+      attachments: currentAttachments,
       replyTo: replyingTo ? {
         id: replyingTo.id,
         content: replyingTo.content,
@@ -205,14 +372,13 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
     // Optimistic update
     onOptimisticMessage?.(optimisticMessage);
     setMessage(''); // Clear input immediately
-    const currentAttachments = [...attachments];
     setAttachments([]); // Clear attachments
     const currentReplyId = replyingTo?.id;
     onCancelReply?.(); // Clear reply state
 
     // Stop typing indicator
     if (socket) {
-      socket.emit('typing-stop', { workspaceId: channelId || groupId || workspaceId });
+      socket.emit('typing-stop', { workspaceId: roomId, threadId });
     }
 
     // Reset height
@@ -230,7 +396,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
         },
         body: JSON.stringify({
           content: trimmedMessage,
-          workspaceId: (groupId || channelId) ? undefined : workspaceId,
+          workspaceId,
           groupId,
           channelId,
           attachments: currentAttachments,
@@ -247,21 +413,62 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
         // Emit to socket for real-time updates (broadcast the created message)
         if (socket) {
           socket.emit('message-created', {
-            workspaceId: channelId || groupId || workspaceId, // Use channelId or groupId as room ID if present
+            workspaceId: roomId,
             message: { ...newMessage, tempId },
           });
         }
       } else {
-        console.error('Failed to send message');
+        const error = await response.json().catch(() => null);
+        onMessageFailed?.(tempId);
+        setMessage(prev => prev || trimmedMessage);
+        setAttachments(prev => prev.length ? prev : currentAttachments);
+        toast({
+          title: 'Message not sent',
+          description: error?.error || 'Check your connection and try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      onMessageFailed?.(tempId);
+      setMessage(prev => prev || trimmedMessage);
+      setAttachments(prev => prev.length ? prev : currentAttachments);
+      toast({
+        title: 'Message not sent',
+        description: 'Check your connection and try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSending(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showCommands && filteredCommands.length > 0) {
+      const activeIndex = Math.min(commandIndex, filteredCommands.length - 1);
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setCommandIndex((activeIndex + 1) % filteredCommands.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setCommandIndex((activeIndex - 1 + filteredCommands.length) % filteredCommands.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        executeCommand(filteredCommands[activeIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowCommands(false);
+        return;
+      }
+    }
+
     if (showMentions && filteredUsers.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -294,7 +501,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
 
   return (
     <div className="border-t border-border bg-background flex-shrink-0">
-      {replyingTo && (
+      {replyingTo && showReplyingTo && (
         <div className="px-4 py-2 bg-muted/50 border-b border-border flex items-center justify-between">
           <div className="flex flex-col text-sm truncate pr-4">
             <span className="font-semibold text-foreground">Replying to {replyingTo.author.name || replyingTo.author.username}</span>
@@ -334,6 +541,15 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
 
           {/* Message input */}
           <div className="flex-1 relative">
+            {showCommands && filteredCommands.length > 0 && (
+              <SlashCommandMenu
+                commands={filteredCommands}
+                activeIndex={Math.min(commandIndex, filteredCommands.length - 1)}
+                onSelect={executeCommand}
+                onHover={setCommandIndex}
+              />
+            )}
+
             {/* Mention Dropdown */}
             {showMentions && filteredUsers.length > 0 && (
               <div className="absolute bottom-full left-0 mb-2 w-64 max-h-48 overflow-y-auto bg-popover text-popover-foreground rounded-md border border-border shadow-md z-50">
@@ -370,7 +586,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
               onKeyDown={handleKeyDown}
               placeholder="Type your message..."
               className={cn(
-                "min-h-[40px] max-h-[120px] resize-none border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-lg bg-background text-foreground placeholder-muted-foreground",
+                "min-h-[40px] max-h-[120px] resize-none rounded-sm border-border bg-card text-foreground placeholder-muted-foreground focus:border-foreground/40 focus:ring-1 focus:ring-ring",
                 "pr-20 py-2 pl-3 text-sm" // Space for buttons
               )}
             />
@@ -389,7 +605,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="text-gray-400 hover:text-gray-600 p-1 h-7 w-7 rounded-md hover:bg-gray-100 transition-colors"
+                className="h-7 w-7 p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Paperclip className="w-3 h-3" />}
               </Button>
@@ -398,7 +614,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-gray-400 hover:text-gray-600 p-1 h-7 w-7 rounded-md hover:bg-gray-100 transition-colors"
+                    className="h-7 w-7 p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
                   >
                     <Smile className="w-3 h-3" />
                   </Button>
@@ -415,8 +631,8 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
                       setTimeout(() => {
                         textareaRef.current?.focus();
                       }, 0);
-                    }} 
-                    theme="light" 
+                    }}
+                    theme={resolvedTheme === "dark" ? "dark" : "light"}
                   />
                 </PopoverContent>
               </Popover>
@@ -429,10 +645,10 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
             disabled={!canSend}
             size="sm"
             className={cn(
-              "px-3 py-2 h-9 rounded-lg font-medium transition-colors",
+              "h-9 rounded-sm px-3 py-2 font-medium transition-colors",
               canSend
-                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "cursor-not-allowed bg-secondary text-muted-foreground"
             )}
           >
             <Send className="w-4 h-4" />
@@ -442,7 +658,7 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
         {/* Character count or other info */}
         {message.length > 0 && (
           <div className="mt-2 flex items-center justify-between text-xs">
-            <div className="text-gray-500 hidden sm:block">
+            <div className="hidden text-muted-foreground sm:block">
               <span>Press Enter to send • Shift+Enter for new line</span>
             </div>
             <span className={cn(
@@ -454,6 +670,59 @@ export function ChatInput({ workspaceId, groupId, channelId, currentUser, replyi
           </div>
         )}
       </div>
+
+      <PollComposer
+        open={pollOpen}
+        onOpenChange={setPollOpen}
+        workspaceId={workspaceId}
+        groupId={groupId}
+        channelId={channelId}
+        replyToId={replyingTo?.id}
+        initialQuestion={pollSeed}
+        onCreated={handleExternalCreated}
+      />
+
+      <TaskComposer
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
+        workspaceId={workspaceId}
+        groupId={groupId}
+        channelId={channelId}
+        replyToId={replyingTo?.id}
+        initialTitle={taskSeed}
+        users={workspaceUsers}
+        onCreated={handleExternalCreated}
+      />
+
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chat commands</DialogTitle>
+            <DialogDescription>
+              Type / in the message box to open this menu anytime.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="divide-y divide-border border border-border">
+            {allCommands.map(command => (
+              <button
+                key={command.id}
+                type="button"
+                onClick={() => {
+                  setHelpOpen(false);
+                  executeCommand(command);
+                }}
+                className="flex w-full items-center gap-3 bg-card px-3 py-2.5 text-left transition-colors hover:bg-secondary"
+              >
+                <command.Icon className="h-4 w-4 text-muted-foreground" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[12px] font-medium">{command.label}</span>
+                  <span className="block text-[10px] text-muted-foreground">{command.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

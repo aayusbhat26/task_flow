@@ -10,10 +10,10 @@ export enum CompletionSoundEffect {
 
 // Paths to completion sound effects
 export const pathsToCompletionSounds = {
-  SUCCESS: "/sounds/bell.mp3", // Updated to use sounds directory
-  ACHIEVEMENT: "/sounds/fancy.mp3", // Updated to use sounds directory
-  TASK_COMPLETE: "/sounds/digital.mp3", // Updated to use sounds directory
-  QUESTION_COMPLETE: "/sounds/analog.mp3", // Updated to use sounds directory
+  SUCCESS: "/sounds/bell.wav", // Updated to use sounds directory
+  ACHIEVEMENT: "/sounds/fancy.wav", // Updated to use sounds directory
+  TASK_COMPLETE: "/sounds/digital.wav", // Updated to use sounds directory
+  QUESTION_COMPLETE: "/sounds/analog.wav", // Updated to use sounds directory
 } as const;
 
 // Default volumes for different sound types

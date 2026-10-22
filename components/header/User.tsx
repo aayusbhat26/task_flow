@@ -1,17 +1,12 @@
 "use client";
 
-import { Check, Globe, LogOut, Moon, Settings2, Sun } from "lucide-react";
+import { useState } from "react";
+import { Check, Crown, Globe, LogOut, Moon, Settings2, Sun, Laptop, ArrowUpRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { UserAvatar } from "../ui/user-avatar";
@@ -19,10 +14,10 @@ import { useTheme } from "next-themes";
 import { useChangeLocale } from "@/hooks/useChangeLocale";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
-import Image from "next/image";
+import { signOut, useSession } from "next-auth/react";
 import { getUserDisplayName } from "@/lib/userUtils";
-import { cn, getRandomColor } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { effectivePlan } from "@/lib/billing";
 
 interface Props {
   profileImage?: string | null;
@@ -32,15 +27,33 @@ interface Props {
   surname?: string | null;
 }
 
+const themeOptions = [
+  { value: "light", label: "Paper", icon: Sun },
+  { value: "dark", label: "Evening", icon: Moon },
+  { value: "system", label: "System", icon: Laptop },
+];
+
+const locales = [
+  { value: "en", label: "English" },
+  { value: "te", label: "తెలుగు" },
+];
+
 export const User = ({ profileImage, username, email, name, surname }: Props) => {
+  const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { onSelectChange } = useChangeLocale();
   const lang = useLocale();
   const t = useTranslations("COMMON");
+  const { data: session } = useSession();
 
   const user = { name, surname, username, email, image: profileImage };
   const displayName = getUserDisplayName(user);
   const initials = displayName.charAt(0).toUpperCase();
+  const plan = effectivePlan({
+    plan: session?.user?.plan,
+    planExpiresAt: session?.user?.planExpiresAt,
+  });
+  const isPro = plan !== "FREE";
 
   const logOutHandler = () => {
     signOut({
@@ -48,131 +61,176 @@ export const User = ({ profileImage, username, email, name, surname }: Props) =>
     });
   };
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background ml-2">
-        <UserAvatar
-          className="w-10 h-10"
-          profileImage={profileImage}
-          fallbackText={initials}
-          userId={user.username || user.email}
-        />
-      </DropdownMenuTrigger>
-             <DropdownMenuContent align="end" sideOffset={10} className="w-64 z-50 relative">
-        <div className="flex items-center gap-3 p-3">
-          {profileImage ? (
-            <Image
-              src={profileImage}
-              alt="profile image"
-              className="w-10 h-10 rounded-full object-cover"
-              width={40}
-              height={40}
-            />
-          ) : (
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium text-white",
-              getRandomColor(user.username || user.email)
-            )}>
-              {initials}
-            </div>
-          )}
+  const chooseTheme = (value: string) => {
+    setTheme(value);
+    setOpen(false);
+  };
 
-          <div className="flex-1 min-w-0">
-            <DropdownMenuLabel className="text-sm font-medium truncate">
+  const chooseLocale = (value: string) => {
+    setOpen(false);
+    onSelectChange(value);
+  };
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Open profile menu"
+          className="ml-1 rounded-full ring-offset-background transition-transform duration-200 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-95"
+        >
+          <UserAvatar
+            className="h-8 w-8"
+            profileImage={profileImage}
+            fallbackText={initials}
+            userId={username || email}
+          />
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="end"
+        sideOffset={10}
+        className="w-[292px] overflow-hidden p-0"
+      >
+        <div className="flex items-center gap-3 px-4 py-4">
+          <UserAvatar
+            className="h-10 w-10 shrink-0"
+            profileImage={profileImage}
+            fallbackText={initials}
+            userId={username || email}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium leading-tight">
               {displayName}
-            </DropdownMenuLabel>
-            <DropdownMenuLabel className="text-xs text-muted-foreground font-normal truncate">
+            </p>
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">
               {email}
-            </DropdownMenuLabel>
+            </p>
+          </div>
+          <span
+            className={cn(
+              "flex shrink-0 items-center gap-1 border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.1em]",
+              isPro
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border text-muted-foreground"
+            )}
+          >
+            {isPro && <Crown className="h-2.5 w-2.5" />}
+            {plan.toLowerCase()}
+          </span>
+        </div>
+
+        <DropdownMenuSeparator className="mx-0 my-0" />
+
+        <div className="px-4 py-3.5">
+          <p className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground">
+            Appearance
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-px border border-border bg-border">
+            {themeOptions.map((option) => {
+              const Icon = option.icon;
+              const active = theme === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => chooseTheme(option.value)}
+                  className={cn(
+                    "group flex flex-col items-center gap-1.5 py-2.5 text-[10px] transition-colors duration-150",
+                    active
+                      ? "bg-secondary text-foreground"
+                      : "bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-y-0.5",
+                      active && "text-primary"
+                    )}
+                    strokeWidth={1.6}
+                  />
+                  {option.label}
+                  <span
+                    className={cn(
+                      "h-0.5 w-3 rounded-full transition-colors",
+                      active ? "bg-primary" : "bg-transparent"
+                    )}
+                  />
+                </button>
+              );
+            })}
+          </div>
+          <Link
+            href={`/${lang}/dashboard/settings/theme`}
+            onClick={() => setOpen(false)}
+            className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span>All palettes</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <DropdownMenuSeparator className="mx-0 my-0" />
+
+        <div className="px-4 py-3.5">
+          <p className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground">
+            <Globe className="h-3 w-3" />
+            Language
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-px border border-border bg-border">
+            {locales.map((locale) => (
+              <button
+                key={locale.value}
+                type="button"
+                onClick={() => chooseLocale(locale.value)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-2 text-[11px] transition-colors",
+                  lang === locale.value
+                    ? "bg-secondary text-foreground"
+                    : "bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                )}
+              >
+                {locale.label}
+                {lang === locale.value && <Check className="h-3 w-3 text-primary" />}
+              </button>
+            ))}
           </div>
         </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="cursor-pointer gap-2 px-3 py-2">
-              <Moon size={16} className="hidden dark:inline-block" />
-              <Sun size={16} className="dark:hidden" />
-              <span>{t("THEME_HOVER")}</span>
-            </DropdownMenuSubTrigger>
-                         <DropdownMenuPortal>
-               <DropdownMenuSubContent sideOffset={10} className="w-48" align="start" side="right">
-                 <DropdownMenuItem
-                   onClick={() => {
-                     setTheme("dark");
-                   }}
-                   className="flex justify-between items-center cursor-pointer px-3 py-2"
-                 >
-                   <span>{t("DARK")}</span>
-                   {theme === "dark" && <Check size={14} />}
-                 </DropdownMenuItem>
-                 <DropdownMenuItem
-                   onClick={() => {
-                     setTheme("light");
-                   }}
-                   className="flex justify-between items-center cursor-pointer px-3 py-2"
-                 >
-                   <span>{t("LIGHT")}</span>
-                   {theme === "light" && <Check size={14} />}
-                 </DropdownMenuItem>
-                 <DropdownMenuItem
-                   onClick={() => {
-                     setTheme("system");
-                   }}
-                   className="flex justify-between items-center cursor-pointer px-3 py-2"
-                 >
-                   <span>{t("SYSTEM")}</span>
-                   {theme === "system" && <Check size={14} />}
-                 </DropdownMenuItem>
-               </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="cursor-pointer gap-2 px-3 py-2">
-              <Globe size={16} />
-              <span>{t("LANG_HOVER")}</span>
-            </DropdownMenuSubTrigger>
-                         <DropdownMenuPortal>
-               <DropdownMenuSubContent sideOffset={10} className="w-48" align="start" side="right">
-                 <DropdownMenuItem
-                   onClick={() => {
-                     onSelectChange("en");
-                   }}
-                   className="flex justify-between items-center cursor-pointer px-3 py-2"
-                 >
-                   <span>English</span>
-                   {lang === "en" && <Check size={14} />}
-                 </DropdownMenuItem>
-                 <DropdownMenuItem
-                   onClick={() => {
-                     onSelectChange("te");
-                   }}
-                   className="flex justify-between items-center cursor-pointer px-3 py-2"
-                 >
-                   <span>Telugu</span>
-                   {lang === "te" && <Check size={14} />}
-                 </DropdownMenuItem>
-               </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
-          <DropdownMenuItem className="cursor-pointer gap-2 px-3 py-2 text-yellow-500 font-medium hover:text-yellow-600">
-            <Link href={"/upgrade"} className="flex gap-2 items-center w-full">
-              <span className="text-base">⭐</span> Go Premium
+
+        <DropdownMenuSeparator className="mx-0 my-0" />
+
+        <div className="p-1.5">
+          <DropdownMenuItem asChild className="cursor-pointer px-2.5 py-2">
+            <Link href={`/${lang}/upgrade`} className="flex w-full items-center gap-2.5">
+              <Crown className="h-4 w-4 text-primary" />
+              <span className="flex-1 text-[13px]">
+                {isPro ? "Billing & plan" : "Go Premium"}
+              </span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer gap-2 px-3 py-2">
-            <Link href={"/dashboard/settings"} className="flex gap-2 items-center w-full">
-              <Settings2 size={16} /> {t("SETTINGS")}
+
+          <DropdownMenuItem asChild className="cursor-pointer px-2.5 py-2">
+            <Link
+              href={`/${lang}/dashboard/settings`}
+              className="flex w-full items-center gap-2.5"
+            >
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[13px]">{t("SETTINGS")}</span>
             </Link>
           </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={logOutHandler}
-          className="cursor-pointer gap-2 px-3 py-2"
-        >
-          <LogOut size={16} />
-          {t("LOG_OUT")}
-        </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="mx-0.5 my-1" />
+
+          <DropdownMenuItem
+            onSelect={logOutHandler}
+            className="cursor-pointer px-2.5 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-[13px]">{t("LOG_OUT")}</span>
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

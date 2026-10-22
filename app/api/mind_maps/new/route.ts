@@ -2,6 +2,7 @@ import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { apiTagSchema } from "@/schema/tagSchema";
 import { NotifyType } from "@prisma/client";
+import { effectivePlan } from "@/lib/billing";
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -62,14 +63,16 @@ export async function POST(request: Request) {
       return NextResponse.json("ERRORS.NO_PERMISSION", { status: 403 });
     }
 
-    if (user.plan === "FREE" && user._count.createdMindMaps >= 3) {
+    const plan = effectivePlan(user);
+
+    if (plan === "FREE" && user._count.createdMindMaps >= 3) {
       return new NextResponse("Free plan users can only create up to 3 mind maps.", {
         status: 403,
         statusText: "Free Plan Limit Reached",
       });
     }
 
-    if (user.plan === "PRO" && user._count.createdMindMaps >= 8) {
+    if (plan === "PRO" && user._count.createdMindMaps >= 8) {
       return new NextResponse("Pro plan users can only create up to 8 mind maps. Upgrade to Business for unlimited.", {
         status: 403,
         statusText: "Pro Plan Limit Reached",

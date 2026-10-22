@@ -50,8 +50,8 @@ export const SidebarContainer = ({
   return (
     <>
       <aside
-        className={`fixed z-50 top-0 h-full left-0 lg:static bg-background border-r flex lg:translate-x-0 transition-all duration-300 ${
-          isOpen ? "translate-x-0 shadow-sm" : "translate-x-[-100%]"
+        className={`fixed left-0 top-0 z-50 flex h-full border-r border-border bg-background transition-transform duration-200 lg:static lg:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <ShortcutSidebar
@@ -70,13 +70,12 @@ export const SidebarContainer = ({
         <CloseSidebar />
       </aside>
       <div
-        onClick={() => {
-          setIsOpen(false);
-        }}
-        className={`fixed h-screen w-full top-0 left-0 bg-black/80 z-40 lg:hidden ${
+        onClick={() => setIsOpen(false)}
+        className={`fixed inset-0 z-40 bg-foreground/35 lg:hidden ${
           isOpen ? "block" : "hidden"
         }`}
-      ></div>
+        aria-hidden
+      />
     </>
   );
 };

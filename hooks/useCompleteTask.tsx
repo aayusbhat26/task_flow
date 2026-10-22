@@ -32,7 +32,7 @@ export const useCompleteTask = () => {
     onSuccess: (data) => {
       // Show success message with points earned
       toast({
-        title: "🎉 Task Completed!",
+        title: "Task completed",
         description: data.message,
       });
 
@@ -40,7 +40,7 @@ export const useCompleteTask = () => {
       if (data.unlockedAchievements && data.unlockedAchievements.length > 0) {
         setTimeout(() => {
           toast({
-            title: "🏆 Achievement Unlocked!",
+            title: "Achievement unlocked",
             description: `You've unlocked ${data.unlockedAchievements.length} new achievement(s)!`,
             duration: 5000,
           });
@@ -51,7 +51,7 @@ export const useCompleteTask = () => {
       if (data.leveledUp) {
         setTimeout(() => {
           toast({
-            title: "🎊 LEVEL UP!",
+            title: "Level up",
             description: "Congratulations! You've leveled up!",
             duration: 7000,
           });

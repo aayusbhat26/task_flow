@@ -54,9 +54,9 @@
     }
   },
   "CHANGE_PROFILE_IMAGE": {
-  "TITLE": "Send a photo!",
-  "BUTTON": "Choose a photo",
-  "HOVER": "Change your profile image"
+    "TITLE": "Send a photo!",
+    "BUTTON": "Choose a photo",
+    "HOVER": "Change your profile image"
   },
   "ONBOARDING_FORM": {
     "FIRST_STEP": {
@@ -92,7 +92,6 @@
       },
       "IMAGE": "Only .jpeg, .jpg, .png, .webp, .gif types are supported"
     },
-
     "FINISH": {
       "TITLE": "That's it!",
       "DESC_FIRST": "You can already start using",
@@ -135,7 +134,10 @@
       "NO_USER_API": "User not Found",
       "UNAUTHORIZED": "Unauthorized. Please sign in!",
       "TOO_MANY_WORKSPACES": "The limit on the number of workspaces that can be created has been reached",
-      "SOUND_LOAD_ERROR": "Failed to load sound effect. Please try again."
+      "SOUND_LOAD_ERROR": "Failed to load sound effect. Please try again.",
+      "UPLOAD_TITLE": "Upload failed. Please try again.",
+      "SAME_NAME_WORKSPACE": "A workspace with this name already exists",
+      "NO_PERMISSION": "You do not have permission to do that"
     },
     "SUCCESS": {
       "SIGN_UP": "Account was created!",
@@ -145,14 +147,18 @@
       "ONBOARDING_COMPLETE": "Welcome to TaskFlow!",
       "PASSWORD_CHANGED": "Password has been changed!",
       "NEW_WORKSPACE": "The workspace has been created!",
-      "SOUND_SETTINGS_UPDATED": "Sound settings have been updated successfully!"
+      "SOUND_SETTINGS_UPDATED": "Sound settings have been updated successfully!",
+      "CHANGED_PASSWORD": "Password changed",
+      "UPDATED_WORKSPACE": "Workspace updated",
+      "WORKSPACE_PICTURE_UPDATED": "Workspace icon updated",
+      "WORKSPACE_PICTURE_DELETED": "Workspace icon removed"
     },
     "PENDING": {
       "LOADING": "Please wait"
     },
     "SCHEMA": {
       "PASSWORD": {
-        "MIN": "Password must have at least 6 characters",
+        "MIN": "Password must have at least 10 characters",
         "UPPERCASE": "Password must contain at least one uppercase letter",
         "LOWERCASE": "Password must contain at least one lowercase letter",
         "DIGIT": "Password must contain at least one digit"
@@ -168,15 +174,23 @@
       },
       "WORKSPACE": {
         "SHORT": "Workspace name is too short",
-        "SPECIAL_CHARS": "Workspace name must only contain letters and digits",
-        "LONG": "Workspace name is too long",
+        "SPECIAL_CHARS": "Workspace name can use letters, numbers, spaces, dots, dashes and underscores",
+        "LONG": "Workspace name is too long (40 characters max)",
         "WRONG_NAME": "Please enter the correct workspace name"
       },
       "LANGUAGE": "Please select a language",
       "CHOOSE_ONE": "Please select one of the options",
       "PASSWORD_NOT_THE_SAME": "Passwords do not match",
       "LINK": "Please enter a valid URL",
-      "IMAGE_REQUIRED": "Please select an image"
+      "IMAGE_REQUIRED": "Please select an image",
+      "PASSWORD_SAME_AS_CURRENT": "The new password must be different from the current one"
+    },
+    "SUCCES": {
+      "TASK_ADDED": "Task created",
+      "MIND_MAP_ADDED": "Mind map created",
+      "UPDATE_POMODORO_SETTINGS": "Pomodoro settings updated",
+      "RESET_POMODORO_SETTINGS": "Pomodoro settings reset",
+      "LEAVE_FROM_WORKSPACE": "You left the workspace"
     }
   },
   "SIDEBAR": {
@@ -197,14 +211,14 @@
       "NEW_WORKSPACE_DIALOG_TITLE": "Create new workspace",
       "NEW_WORKSPACE_DIALOG_DESC": "some text"
     },
-      "SETTINGS": {
-    "GENERAL": "General",
-    "ACCOUNT": "Account",
-    "SECURITY": "Security",
-    "THEME": "Theme",
-    "SOUND": "Sound",
-    "WORKSPACE": "Workspace"
-  },
+    "SETTINGS": {
+      "GENERAL": "General",
+      "ACCOUNT": "Account",
+      "SECURITY": "Security",
+      "THEME": "Theme",
+      "SOUND": "Sound",
+      "WORKSPACE": "Workspace"
+    },
     "POMODORO": {
       "TIMER": "Timer",
       "SETTINGS": "Settings"
@@ -512,7 +526,8 @@
         "DESC": "You will loose access to all your workspaces and projects",
         "WARNING": "Account deletion is permanent and cannot be undone,click 'Delete my account' to delete your account.",
         "BUTTON": "DELETE MY ACCOUNT"
-      }
+      },
+      "NO_LANGUAGE": "Please select a language"
     },
     "THEME": {
       "ADD_TASK": "Add task",
@@ -520,13 +535,13 @@
     },
     "SECURITY": {
       "TITLE": "Security",
-      "DESC": "You can change your password here. Remember that it should contain atleast 6 characters, at least one upper and lower case letter and at least one number",
+      "DESC": "Change the password used to sign in to this account. Use at least 10 characters with upper and lower case letters and a number.",
       "WARNING": {
-        "FIRST": "The password can be changed",
-        "SECOND": "only for accounts created through the form on the site",
-        "THIRD": "If you have created an account via Google or Github button, ",
-        "FOURTH": "it is not possible to change the password",
-        "FIFTH": "due to another method of account authorization."
+        "FIRST": "Password changes only apply to accounts created with email and password. ",
+        "SECOND": "Accounts created through Google or GitHub ",
+        "THIRD": "must manage their password with that provider. ",
+        "FOURTH": "",
+        "FIFTH": ""
       },
       "FORM": {
         "CURRENT": {
@@ -645,7 +660,8 @@
     "DEFAULT_NAME": {
       "MIND_MAP": "Untitled Mind Map",
       "TASK": "Untitled Task"
-    }
+    },
+    "NO_ASSIGNMENT": "You haven't been assigned anywhere yet"
   },
   "CALENDAR": {
     "DAYS_OF_WEEK": {

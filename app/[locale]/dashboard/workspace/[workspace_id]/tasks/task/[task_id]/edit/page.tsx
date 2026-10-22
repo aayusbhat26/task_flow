@@ -44,7 +44,7 @@ const EditTask = async ({ params: { workspace_id, task_id } }: Params) => {
           )}
           <AddTaskShortcut userId={session.user.id} />
         </DashboardHeader>
-        <main className="flex flex-col gap-2">
+        <main className="px-5 py-8 sm:px-8">
           <TaskContainer
             taskId={task_id}
             workspaceId={workspace_id}
@@ -52,6 +52,7 @@ const EditTask = async ({ params: { workspace_id, task_id } }: Params) => {
             title={task.title}
             content={task.content as unknown as JSON}
             emoji={task.emoji}
+            priority={task.priority}
             from={task?.taskDate?.from ? new Date(task.taskDate.from) : undefined}
             to={task?.taskDate?.to ? new Date(task.taskDate.to) : undefined}
           />

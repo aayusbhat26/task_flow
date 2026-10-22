@@ -20,6 +20,7 @@ const SoundSettings = async () => {
         questionCompletionSound: "QUESTION_COMPLETE",
         soundVolume: 0.6,
         soundsEnabled: true,
+        showDSA: true,
       },
     });
   }
@@ -34,11 +35,11 @@ const SoundSettings = async () => {
             useTranslate: true,
           },
           {
-            name: "settings",
+            name: "Settings",
             href: "/dashboard/settings",
           },
           {
-            name: "sound",
+            name: "Sound",
             href: "/dashboard/settings/sound",
           },
         ]}

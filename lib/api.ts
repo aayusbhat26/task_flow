@@ -16,17 +16,17 @@ import { ACTIVITY_PER_PAGE } from "./constants";
 
 // Get the base URL for API calls (without locale prefix)
 const getApiBaseUrl = () => {
-  if (process.env.NODE_ENV !== "production") {
-    return "http://localhost:3000";
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/$/, "");
   }
 
-  // In production, use the current origin or NEXTAUTH_URL base
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
 
-  // Fallback to NEXTAUTH_URL for server-side calls
-  return process.env.NEXTAUTH_URL || "https://task-flow-main.vercel.app";
+  return "http://localhost:3000";
 };
 
 export const domain = getApiBaseUrl();

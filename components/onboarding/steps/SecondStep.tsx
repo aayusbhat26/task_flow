@@ -1,88 +1,73 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { useOnboardingForm } from "@/context/OnboardingForm";
 import { ActionType } from "@/types/onBoardingContext";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, ListTodo, Timer } from "lucide-react";
 import { useTranslations } from "next-intl";
-import React, { useEffect, useState } from "react";
-
-const useCases = [
-  {
-    case: "STUDY",
-    title: "SECOND_STEP.STUDY",
-  },
-];
+import React, { useEffect } from "react";
 
 export const SecondStep = () => {
   const { currentStep, dispatch } = useOnboardingForm();
-  const [selectedUseCase, setSelectedUseCase] = useState<string>("STUDY");
   const t = useTranslations("ONBOARDING_FORM");
 
-  // Auto-select STUDY on component mount
   useEffect(() => {
     dispatch({ type: ActionType.USECASE, payload: "STUDY" });
   }, [dispatch]);
 
-  const handleUseCaseSelect = (useCase: string) => {
-    setSelectedUseCase(useCase);
-    dispatch({ type: ActionType.USECASE, payload: useCase });
-  };
-
-  const handleSubmit = () => {
-    if (selectedUseCase) {
-      dispatch({ type: ActionType.CHANGE_SITE, payload: currentStep + 1 });
-    }
-  };
-
   return (
-    <>
-      <div className="flex flex-col justify-center items-center gap-4 w-full mt-10 text-center">
-        <h2 className="font-bold text-4xl md:text-5xl  max-w-xs">
-          <span className="text-primary font-semibold">TaskFlow</span>
-        </h2>
-        <p className="max-w-lg text-muted-foreground">
-          {t("SECOND_STEP.INFO")}
-        </p>
-      </div>
+    <div>
+      <p className="eyebrow mb-3">Step 02 — Use</p>
+      <h2 className="font-display text-4xl leading-[1.05] sm:text-5xl">
+        Set up for study.
+      </h2>
+      <p className="mt-3 max-w-[380px] text-sm leading-relaxed text-muted-foreground">
+        This workspace comes shaped around study: practice tracking, notes and
+        a timer for focused sessions. The layout stays out of the way.
+      </p>
 
-      <div className="max-w-md w-full space-y-8 mt-14">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-center">Select your use case</h3>
-
-          <div className="flex flex-col space-y-3">
-            {useCases.map((useCase) => (
-              <div
-                key={useCase.case}
-                className={`flex items-center space-x-3 p-4 rounded-md transition-colors duration-200 cursor-pointer border-2 ${
-                  selectedUseCase === useCase.case
-                    ? "bg-primary/20 border-primary"
-                    : "bg-muted/50 border-transparent hover:bg-muted/80"
-                }`}
-                onClick={() => handleUseCaseSelect(useCase.case)}
-              >
-                <input
-                  type="radio"
-                  name="useCase"
-                  value={useCase.case}
-                  checked={selectedUseCase === useCase.case}
-                  onChange={() => handleUseCaseSelect(useCase.case)}
-                  className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                />
-                <label className="flex-1 text-left cursor-pointer font-medium">
-                  {t(useCase.title)}
-                </label>
-              </div>
-            ))}
+      <div className="mt-8 border-y border-border">
+        {[
+          {
+            icon: BookOpen,
+            title: "Practice tracking",
+            detail: "Questions by topic and difficulty",
+          },
+          {
+            icon: ListTodo,
+            title: "Tasks and notes",
+            detail: "One place for the work around the work",
+          },
+          {
+            icon: Timer,
+            title: "Focus rounds",
+            detail: "A timer that keeps the hour honest",
+          },
+        ].map((item) => (
+          <div
+            key={item.title}
+            className="flex items-start gap-3 border-b border-border py-4 last:border-b-0"
+          >
+            <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div>
+              <p className="text-[13px] font-medium">{item.title}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {item.detail}
+              </p>
+            </div>
           </div>
-        </div>
-
-        <Button
-          onClick={handleSubmit}
-          className="mt-10 w-full max-w-md dark:text-white font-semibold"
-        >
-          {t("NEXT_BTN")}
-          <ArrowRight width={18} height={18} />
-        </Button>
+        ))}
       </div>
-    </>
+
+      <Button
+        onClick={() =>
+          dispatch({ type: ActionType.CHANGE_SITE, payload: currentStep + 1 })
+        }
+        className="mt-8 h-10 w-full"
+      >
+        {t("NEXT_BTN")}
+        <ArrowRight className="h-4 w-4" />
+      </Button>
+    </div>
   );
 };

@@ -1,11 +1,6 @@
 "use client";
 import { Bell, RefreshCw } from "lucide-react";
 import { Button } from "../ui/button";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "../ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
 import { NotificationItem } from "./NotificationItem";
@@ -195,30 +190,22 @@ export const NotificationContainer = ({ userId }: Props) => {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <HoverCard openDelay={250} closeDelay={250}>
-        <PopoverTrigger asChild>
-          <HoverCardTrigger>
-            <Button
-              className="w-6 h-6 sm:h-9 sm:w-9 relative"
-              variant={"ghost"}
-              size={"icon"}
-            >
-              <Bell size={16} />
-              {unseenNotifications.length !== 0 && (
-                <div className="absolute text-white top-0 right-0 bg-primary rounded-full border border-border w-3.5 h-3.5 sm:w-4 sm:h-4 flex justify-center items-center text-xs">
-                  <p>
-                    {unseenNotifications.length > 9
-                      ? "+9"
-                      : unseenNotifications.length}
-                  </p>
-                </div>
-              )}
-            </Button>
-          </HoverCardTrigger>
-        </PopoverTrigger>
-        <HoverCardContent>
-          <span>{t("TITLE")}</span>
-        </HoverCardContent>
+      <PopoverTrigger asChild>
+        <Button
+          className="relative h-8 w-8"
+          variant={"ghost"}
+          size={"icon"}
+          title={t("TITLE")}
+          aria-label={t("TITLE")}
+        >
+          <Bell size={16} />
+          {unseenNotifications.length !== 0 && (
+            <span className="absolute right-1.5 top-1.5 flex h-3.5 min-w-3.5 items-center justify-center bg-primary px-0.5 font-mono text-[8px] text-primary-foreground">
+              {unseenNotifications.length > 9 ? "+9" : unseenNotifications.length}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
         <PopoverContent
           side="bottom"
           align="end"
@@ -284,7 +271,6 @@ export const NotificationContainer = ({ userId }: Props) => {
             </div>
           )}
         </PopoverContent>
-      </HoverCard>
     </Popover>
   );
 };

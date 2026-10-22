@@ -14,7 +14,7 @@ export const Top = ({ showDSA }: Props) => {
     : topSidebarLinks.filter(link => !link.href.includes("/dsa") && !link.href.includes("/gaming"));
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex w-full flex-col items-center gap-0.5">
       {links.map((link, i) => (
         <SidebarLink
           key={`link_${i}`}

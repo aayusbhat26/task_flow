@@ -1,8 +1,11 @@
 import { db } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { MediaChannelView } from "@/components/channels/MediaChannelView";
 import { TypingTest } from "@/components/gaming/TypingTest";
+import { ChatArea } from "@/components/chat/ChatArea";
+import { effectivePlan } from "@/lib/billing";
 
 interface Props {
   params: {
@@ -11,39 +14,56 @@ interface Props {
   };
 }
 
-export default async function ChannelPage({ params: { workspace_id, channelId } }: Props) {
+export default async function ChannelPage({
+  params: { workspace_id, channelId },
+}: Props) {
   const session = await getAuthSession();
-  if (!session) redirect("/");
+  const locale = await getLocale();
 
-  // @ts-ignore
-  const channel = await db.channel.findUnique({
-    where: { id: channelId },
+  if (!session) redirect(`/${locale}/sign-in`);
+
+  const channel = await db.channel.findFirst({
+    where: { id: channelId, workspaceId: workspace_id },
   });
 
-  if (!channel) redirect(`/dashboard/workspace/${workspace_id}`);
+  if (!channel) redirect(`/${locale}/dashboard/workspace/${workspace_id}`);
 
-  // Fetch workspace and user data
   const workspace = await db.workspace.findUnique({
     where: { id: workspace_id },
     include: {
       _count: { select: { subscribers: true } },
-    }
+      subscribers: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true,
+            },
+          },
+        },
+      },
+    },
   });
 
-  if (!workspace) redirect("/");
+  if (!workspace) redirect(`/${locale}/dashboard`);
 
   const currentUser = {
     id: session.user.id,
-    name: session.user.name || '',
-    email: session.user.email || '',
+    name: session.user.name || "",
+    email: session.user.email || "",
     image: session.user.image,
-    username: session.user.username || '',
+    username: session.user.username || "",
+    plan: effectivePlan({
+      plan: session.user.plan,
+      planExpiresAt: session.user.planExpiresAt,
+    }),
   };
 
-  // Render TypingTest for TYPING_RACE channels
   if (channel.type === "TYPING_RACE") {
     return (
-      <div className="h-full w-full flex flex-col bg-background overflow-y-auto">
+      <div className="flex h-full w-full flex-col overflow-y-auto bg-background">
         <TypingTest
           workspaceId={`typing:${channelId}`}
           currentUser={{
@@ -57,14 +77,26 @@ export default async function ChannelPage({ params: { workspace_id, channelId } 
     );
   }
 
+  if (channel.type === "TEXT") {
+    return (
+      <div className="h-[calc(100dvh-0px)] w-full">
+        <ChatArea
+          workspace={workspace as any}
+          currentUser={currentUser}
+          channelId={channel.id}
+          channelName={channel.name}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full w-full flex flex-col bg-background">
-      {/* Media Area */}
+    <div className="flex h-full w-full flex-col bg-background">
       <div className="flex-1 overflow-hidden">
-        <MediaChannelView 
+        <MediaChannelView
           channel={channel}
-          workspace={workspace} 
-          currentUser={currentUser} 
+          workspace={workspace}
+          currentUser={currentUser}
         />
       </div>
     </div>

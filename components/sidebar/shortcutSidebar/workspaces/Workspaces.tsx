@@ -9,7 +9,7 @@ interface Props {
 
 export const Workspaces = ({ userWorkspaces, href }: Props) => {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col items-center gap-1.5">
       {userWorkspaces.map((workspace) => (
         <WorkspaceComponent
           key={workspace.id}

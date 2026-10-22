@@ -1,82 +1,51 @@
 "use client";
 
 import { CalendarItem } from "@/types/extended";
-import { useMemo } from "react";
 import { CustomColors } from "@prisma/client";
-import dayjs from "dayjs";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "../ui/hover-card";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 interface Props {
   dayInfo: CalendarItem;
   showMore?: boolean;
 }
 
-export const CalendarTask = ({
-  dayInfo: {
-    taskDate,
+const colorMap: Record<CustomColors, string> = {
+  PURPLE: "bg-[#5c4a6b]",
+  GREEN: "bg-[#46624a]",
+  RED: "bg-[#7d3f3f]",
+  BLUE: "bg-[#415a77]",
+  CYAN: "bg-[#3f6266]",
+  EMERALD: "bg-[#3f6150]",
+  INDIGO: "bg-[#464f73]",
+  LIME: "bg-[#69703a]",
+  ORANGE: "bg-[#965d3b]",
+  FUCHSIA: "bg-[#744a63]",
+  PINK: "bg-[#8f5560]",
+  YELLOW: "bg-[#8a7131]",
+};
+
+export const CalendarTask = ({ dayInfo }: Props) => {
+  const {
     taskId,
     title,
     workspaceColor,
     workspaceId,
     workspaceName,
-  },
-  showMore,
-}: Props) => {
-  const color = useMemo(() => {
-    switch (workspaceColor) {
-      case CustomColors.PURPLE:
-        return "bg-purple-600 hover:bg-purple-500";
-      case CustomColors.GREEN:
-        return "bg-green-600 hover:bg-green-500";
-      case CustomColors.RED:
-        return "bg-red-600 hover:bg-red-500";
-      case CustomColors.BLUE:
-        return "bg-blue-600 hover:bg-blue-500";
-      case CustomColors.CYAN:
-        return "bg-cyan-600 hover:bg-cyan-500";
-      case CustomColors.EMERALD:
-        return "bg-emerald-600 hover:bg-emerald-500";
-      case CustomColors.INDIGO:
-        return "bg-indigo-600 hover:bg-indigo-500";
-      case CustomColors.LIME:
-        return "bg-lime-600 hover:bg-lime-500";
-      case CustomColors.ORANGE:
-        return "bg-orange-600 hover:bg-orange-500";
-      case CustomColors.FUCHSIA:
-        return "bg-fuchsia-600 hover:bg-fuchsia-500";
-      case CustomColors.PINK:
-        return "bg-pink-600 hover:bg-pink-500";
-      case CustomColors.YELLOW:
-        return "bg-yellow-600 hover:bg-yellow-500";
-      default:
-        return "bg-green-600 hover:bg-green-500";
-    }
-  }, [workspaceColor]);
-
+  } = dayInfo;
   const t = useTranslations("CALENDAR");
+  const locale = useLocale();
 
   return (
-    <HoverCard openDelay={250} closeDelay={250}>
-      <HoverCardTrigger asChild>
-        <Link href={`/dashboard/workspace/${workspaceId}/tasks/task/${taskId}`}>
-          <div
-            className={`shadow-sm rounded-md text-white ${color} bg-opacity-80 dark:bg-opacity-60 transition-colors duration-200 cursor-pointer overflow-hidden ${
-              showMore ? "py-1.5 px-4 h-10" : "py-5 h-7 px-2"
-            }`}
-          >
-            {title ? title : t("TASK")}
-          </div>
-        </Link>
-      </HoverCardTrigger>
-      <HoverCardContent className="break-workds" side="top" sideOffset={6}>
-        {title ? title : t("TASK")} - {workspaceName}
-      </HoverCardContent>
-    </HoverCard>
+    <Link
+      href={`/${locale}/dashboard/workspace/${workspaceId}/tasks/task/${taskId}`}
+      title={`${title || t("TASK")} · ${workspaceName}`}
+      className="flex items-center gap-1.5 px-1 py-0.5 text-[10px] leading-tight transition-colors hover:bg-secondary sm:text-[11px]"
+    >
+      <span
+        className={`h-1.5 w-1.5 shrink-0 ${colorMap[workspaceColor] ?? "bg-primary"}`}
+      />
+      <span className="truncate">{title || t("TASK")}</span>
+    </Link>
   );
 };

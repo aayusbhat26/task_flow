@@ -7,6 +7,8 @@ declare module "next-auth/jwt" {
     surname?: string | null;
     completedOnboarding?: boolean;
     plan?: string;
+    planExpiresAt?: string | null;
+    billingInterval?: string | null;
   }
 }
 
@@ -18,6 +20,8 @@ declare module "next-auth" {
       completedOnboarding: boolean;
       surname?: string | null;
       plan?: string;
+      planExpiresAt?: string | null;
+      billingInterval?: string | null;
     };
   }
 }

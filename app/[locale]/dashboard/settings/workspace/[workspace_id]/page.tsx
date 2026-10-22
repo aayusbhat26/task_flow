@@ -33,7 +33,7 @@ const Workspace = async ({ params: { workspace_id } }: Params) => {
             useTranslate: true,
           },
           {
-            name: "settings",
+            name: "Settings",
             href: "/dashboard/settings",
           },
           {

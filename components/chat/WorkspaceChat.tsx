@@ -222,7 +222,7 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
                   >
                     <div className="relative flex-shrink-0 mr-3">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={sub.user.image || ''} alt={sub.user.name} />
+                        <AvatarImage src={sub.user.image || undefined} alt={sub.user.name} />
                         <AvatarFallback className={cn("text-primary-foreground font-semibold text-xs", getRandomColor(sub.user.id))}>
                           {sub.user.name?.charAt(0) || sub.user.username?.charAt(0) || 'U'}
                         </AvatarFallback>
@@ -251,7 +251,7 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
           <div className="flex items-center p-2 rounded-lg bg-background border border-border">
             <div className="relative flex-shrink-0">
               <Avatar className="w-8 h-8">
-                <AvatarImage src={currentUser.image || ''} alt={currentUser.name} />
+                <AvatarImage src={currentUser.image || undefined} alt={currentUser.name} />
                 <AvatarFallback className={cn("text-primary-foreground font-semibold", getRandomColor(currentUser.id))}>
                   {currentUser.name?.charAt(0) || currentUser.username?.charAt(0) || 'U'}
                 </AvatarFallback>
@@ -281,7 +281,7 @@ export function WorkspaceChat({ workspaces, currentUser }: WorkspaceChatProps) {
             {selectedGroupId && selectedDmUser && (
               <div className="p-4 border-b border-border bg-background flex-shrink-0 flex items-center">
                 <Avatar className="w-8 h-8 mr-3">
-                  <AvatarImage src={selectedDmUser.image || ''} alt={selectedDmUser.name} />
+                  <AvatarImage src={selectedDmUser.image || undefined} alt={selectedDmUser.name} />
                   <AvatarFallback className={cn("text-primary-foreground font-semibold", getRandomColor(selectedDmUser.id))}>
                     {selectedDmUser.name?.charAt(0) || selectedDmUser.username?.charAt(0) || 'U'}
                   </AvatarFallback>

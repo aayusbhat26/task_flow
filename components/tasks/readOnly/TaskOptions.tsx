@@ -27,6 +27,7 @@ import axios, { AxiosError } from "axios";
 import { MoreHorizontal, Pencil, Star, StarOff, Trash } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -50,6 +51,7 @@ export const TaskOptions = ({
   const t = useTranslations("TASK.EDITOR.READ_ONLY");
   const { toast } = useToast();
   const router = useRouter();
+  const locale = useLocale();
 
   const queryClient = useQueryClient();
 
@@ -67,7 +69,7 @@ export const TaskOptions = ({
 
       queryClient.invalidateQueries(["getWorkspaceShortcuts"] as any);
 
-      router.push(`/dashboard/workspace/${workspaceId}`);
+      router.push(`/${locale}/dashboard/workspace/${workspaceId}`);
       router.refresh();
     },
     onError: (err: AxiosError) => {
@@ -140,7 +142,7 @@ export const TaskOptions = ({
               <>
                 <DropdownMenuItem className="cursor-pointer">
                   <Link
-                    href={`/dashboard/workspace/${workspaceId}/tasks/task/${taskId}/edit`}
+                    href={`/${locale}/dashboard/workspace/${workspaceId}/tasks/task/${taskId}/edit`}
                   >
                     <Pencil size={16} className="mr-2" />
                     {t("EDIT")}

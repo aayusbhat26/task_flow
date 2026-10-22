@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 import { CheckCircle, LoaderCircle } from "lucide-react";
 import { useCompleteTask } from "@/hooks/useCompleteTask";
 import { playTaskCompletionSound } from "@/lib/soundEffects";
@@ -27,9 +28,18 @@ export const TaskCompleteButton = ({
 }: TaskCompleteButtonProps) => {
   const completeTaskMutation = useCompleteTask();
   const { userSettings } = useUserSettings();
+  const [completed, setCompleted] = useState(isCompleted);
+
+  useEffect(() => {
+    setCompleted(isCompleted);
+  }, [isCompleted]);
+
+  useEffect(() => {
+    if (completeTaskMutation.isSuccess) setCompleted(true);
+  }, [completeTaskMutation.isSuccess]);
 
   const handleComplete = () => {
-    if (isCompleted || disabled) return;
+    if (completed || disabled) return;
     
     // Play sound before making the API call for immediate feedback
     playTaskCompletionSound(undefined, userSettings?.soundsEnabled ?? true);
@@ -40,12 +50,25 @@ export const TaskCompleteButton = ({
     });
   };
 
+  if (completed) {
+    return (
+      <span
+        className={`inline-flex h-8 items-center gap-2 border border-primary/25 bg-primary/10 px-3 text-xs font-medium text-primary ${
+          className ?? ""
+        }`}
+      >
+        <CheckCircle className="h-4 w-4" />
+        Completed
+      </span>
+    );
+  }
+
   return (
     <Button
-      variant={isCompleted ? "default" : variant}
+      variant={variant}
       size={size}
       onClick={handleComplete}
-      disabled={disabled || isCompleted || completeTaskMutation.isPending}
+      disabled={disabled || completeTaskMutation.isPending}
       className={className}
     >
       {completeTaskMutation.isPending ? (
@@ -53,7 +76,7 @@ export const TaskCompleteButton = ({
           <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
           Completing...
         </>
-      ) : isCompleted ? (
+      ) : completed ? (
         <>
           <CheckCircle className="h-4 w-4 mr-2" />
           Completed

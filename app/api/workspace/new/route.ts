@@ -84,7 +84,13 @@ export async function POST(request: Request) {
       },
     });
 
-
+    await db.channel.create({
+      data: {
+        name: "general",
+        type: "TEXT",
+        workspaceId: workspace.id,
+      },
+    });
 
     return NextResponse.json(workspace, { status: 200 });
   } catch (_) {

@@ -6,6 +6,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { signUpSchema, SignUpSchema } from "@/schema/signUpSchema";
@@ -19,19 +20,19 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { LoadingState } from "../ui/loadingState";
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Shield } from "lucide-react";
-import { userService } from "@/lib/userService";
+import { Eye, EyeOff } from "lucide-react";
+import type { OAuthProviderAvailability } from "@/lib/auth";
 
-export const SignUpCardContent = () => {
+export const SignUpCardContent = ({
+  oauthProviders,
+}: {
+  oauthProviders: OAuthProviderAvailability;
+}) => {
   const t = useTranslations("AUTH");
   const m = useTranslations("MESSAGES");
   const form = useForm<SignUpSchema>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      username: "",
-    },
+    defaultValues: { email: "", password: "", username: "" },
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,170 +46,157 @@ export const SignUpCardContent = () => {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          username: data.username,
-        }),
+        body: JSON.stringify(data),
       });
-      const response = await res.json();
+      const response = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error(response.message || "Registration failed");
+        throw new Error(
+          response.error || response.message || m("ERRORS.DEFAULT")
+        );
       }
-      toast({
-        title: m("SUCCESS.SIGN_UP"),
-      });
-      // Auto-login after successful registration
-      await signIn("credentials", {
+
+      const login = await signIn("credentials", {
         email: data.email,
         password: data.password,
-        redirect: true,
-        callbackUrl: `/en/onboarding`
+        redirect: false,
       });
-    } catch (err) {
-      let errMsg = m("ERRORS.DEFAULT");
-      if (typeof err === "string") {
-        errMsg = err;
-      } else if (err instanceof Error) {
-        errMsg = m(err.message);
+
+      if (!login || login.error) {
+        toast({
+          title: "Account created. Please sign in to continue.",
+        });
+        router.push("/sign-in");
+        return;
       }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
       toast({
-        title: errMsg,
+        title:
+          err instanceof Error ? err.message : m("ERRORS.DEFAULT"),
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <ProviderSignInBtns
+        disabled={isLoading}
+        onLoading={setIsLoading}
+        oauthProviders={oauthProviders}
+      />
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            or use email
+          </span>
+        </div>
+      </div>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Provider Sign In */}
-          <div className="space-y-3">
-            <ProviderSignInBtns disabled={isLoading} onLoading={setIsLoading} />
-            
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border/40" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-3 text-muted-foreground font-medium">
-                  Or create your account
-                </span>
-              </div>
-            </div>
-          </div>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-xs font-medium text-foreground">
+                  {t("EMAIL")}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          {/* Form Fields */}
-          <div className="space-y-3">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FormControl>
-                    <div className="relative group">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
-                      <Input 
-                        placeholder={t("EMAIL")} 
-                        className="pl-10 h-10 bg-muted/30 border-border/40 focus:border-primary/60 focus:bg-background/80 transition-all duration-200 rounded-xl"
-                        {...field} 
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FormControl>
-                    <div className="relative group">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
-                      <Input 
-                        placeholder={t("USERNAME")} 
-                        className="pl-10 h-10 bg-muted/30 border-border/40 focus:border-primary/60 focus:bg-background/80 transition-all duration-200 rounded-xl"
-                        {...field} 
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem className="space-y-1">
-                  <FormControl>
-                    <div className="relative group">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder={t("PASSWORD")}
-                        className="pl-10 pr-10 h-10 bg-muted/30 border-border/40 focus:border-primary/60 focus:bg-background/80 transition-all duration-200 rounded-xl"
-                        {...field}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors duration-200"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-xs font-medium text-foreground">
+                  {t("USERNAME")}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="username"
+                    placeholder="your-handle"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          {/* Submit Button */}
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-xs font-medium text-foreground">
+                  {t("PASSWORD")}
+                </FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="At least 10 characters"
+                      className="pr-10"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <Button
             disabled={isLoading}
-            className="w-full h-10 font-semibold text-sm bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 group"
+            className="mt-2 h-10 w-full"
             type="submit"
           >
             {isLoading ? (
               <LoadingState loadingText={m("PENDING.LOADING")} />
             ) : (
-              <>
-                {t("SIGN_UP.SUBMIT_BTN")}
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-              </>
+              t("SIGN_UP.SUBMIT_BTN")
             )}
           </Button>
 
-          {/* Terms & Privacy - More Compact */}
-          <div className="bg-muted/20 border border-border/20 rounded-lg p-2">
-            <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {t("SIGN_UP.TERMS.FIRST")}{" "}
-                <span className="font-semibold text-foreground hover:text-primary transition-colors duration-200 cursor-pointer underline-offset-2 hover:underline">
-                  {t("SIGN_UP.TERMS.SECOND")}
-                </span>
-                {" "}and{" "}
-                <span className="font-semibold text-foreground hover:text-primary transition-colors duration-200 cursor-pointer underline-offset-2 hover:underline">
-                  Privacy Policy
-                </span>
-                . Your data is secure with us.
-              </p>
-            </div>
-          </div>
+          <p className="pt-2 text-xs leading-relaxed text-muted-foreground">
+            Your workspace is private by default. You can invite collaborators
+            once it&apos;s set up.
+          </p>
         </form>
       </Form>
     </div>

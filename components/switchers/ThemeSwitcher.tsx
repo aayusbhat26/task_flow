@@ -6,20 +6,28 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Moon, Sun, Crown } from "lucide-react";
+import { Crown, Moon, Sun } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { HoverCard } from "../ui/hover-card";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { effectivePlan } from "@/lib/billing";
 
-// Simple hover content component
-const HoverCardContent = ({ children, align }: { children: React.ReactNode; align?: "center" | "start" | "end" }) => (
-  <div className="absolute z-50 rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-    {children}
-  </div>
-);
+const premiumThemes = [
+  ["ocean", "Harbor"],
+  ["forest", "Moss"],
+  ["sunset", "Clay"],
+  ["midnight", "Charcoal"],
+  ["cherry", "Claret"],
+  ["autumn", "Ochre"],
+  ["lavender", "Iris"],
+  ["arctic", "Frost"],
+  ["cyber", "Terminal"],
+  ["volcano", "Ember"],
+] as const;
 
 interface Props {
   variant?:
@@ -38,81 +46,74 @@ interface Props {
 export const ThemeSwitcher = ({
   size = "default",
   variant = "default",
-  alignHover = "center",
   alignDropdown = "center",
 }: Props) => {
   const { setTheme } = useTheme();
   const t = useTranslations("COMMON");
   const { data: session } = useSession();
-  const router = useRouter();
+  const { toast } = useToast();
+  const isFree =
+    effectivePlan({
+      plan: session?.user?.plan,
+      planExpiresAt: session?.user?.planExpiresAt,
+    }) === "FREE";
 
   const handleThemeChange = (theme: string) => {
-    const freeThemes = ['light', 'dark', 'system'];
-    const plan = session?.user?.plan || 'FREE';
-    
-    if (!freeThemes.includes(theme) && plan === 'FREE') {
-      alert("This theme is only available on the Pro or Business plans.");
-      router.push('/upgrade');
+    if (isFree && theme !== "light" && theme !== "dark" && theme !== "system") {
+      toast({
+        title: "A Pro theme",
+        description: "This palette is available on Pro and Business plans.",
+      });
       return;
     }
     setTheme(theme);
   };
 
   return (
-    <HoverCard openDelay={250} closeDelay={250}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant={variant} size={size}>
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:-rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle Theme</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align={alignDropdown} className="max-h-80 overflow-y-auto">
-          <DropdownMenuItem onClick={() => handleThemeChange("light")}>
-            Light
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant={variant}
+          size={size}
+          aria-label={t("THEME_HOVER")}
+          title={t("THEME_HOVER")}
+          className="relative"
+        >
+          <Sun className="h-[1.15rem] w-[1.15rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Sun
+            className="absolute h-[1.15rem] w-[1.15rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+            aria-hidden
+          />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={alignDropdown} className="w-48">
+        <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          Appearance
+        </DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => handleThemeChange("light")}>
+          Light
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
+          Dark
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleThemeChange("system")}>
+          System
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          <Crown className="h-3 w-3" /> Pro palettes
+        </DropdownMenuLabel>
+        {premiumThemes.map(([value, label]) => (
+          <DropdownMenuItem
+            key={value}
+            onClick={() => handleThemeChange(value)}
+            className="justify-between"
+          >
+            {label}
+            {isFree && <Crown className="h-3 w-3 text-muted-foreground" />}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
-            Dark
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("system")}>
-            System
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("ocean")}>
-            Ocean <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("forest")}>
-            Forest <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("sunset")}>
-            Sunset <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("midnight")}>
-            Midnight <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("cherry")}>
-            Cherry <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("cyber")}>
-            Cyber <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("autumn")}>
-            Autumn <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("lavender")}>
-            Lavender <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("arctic")}>
-            Arctic <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleThemeChange("volcano")}>
-            Volcano <Crown className="w-4 h-4 ml-auto text-yellow-500" />
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <HoverCardContent align={alignHover}>
-        <span>{t("THEME_HOVER")}</span>
-      </HoverCardContent>
-    </HoverCard>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

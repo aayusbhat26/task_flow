@@ -3,7 +3,7 @@ import { Calendar } from "@/components/calendar/Calendar";
 import { DashboardHeader } from "@/components/header/DashboardHeader";
 import { checkIfUserCompletedOnboarding } from "@/lib/checkIfUserCompletedOnboarding";
 
-const AssignedToMe = async () => {
+const CalendarPage = async () => {
   const session = await checkIfUserCompletedOnboarding(
     "/dashboard/assigned-to-me"
   );
@@ -13,11 +13,11 @@ const AssignedToMe = async () => {
       <DashboardHeader>
         <AddTaskShortcut userId={session.user.id} />
       </DashboardHeader>
-      <main className="h-full">
+      <main className="min-h-full">
         <Calendar userId={session.user.id} />
       </main>
     </>
   );
 };
 
-export default AssignedToMe;
+export default CalendarPage;

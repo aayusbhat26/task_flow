@@ -25,9 +25,7 @@ export const ShortcutContainerBtnItem = ({
       disabled={isLoading}
       onClick={onClick}
       variant={"outline"}
-      className={`text-sm md:text-base min-w-[10rem] sm:min-w-[13rem] h-14 p-2 rounded-lg shadow-sm flex justify-center items-center gap-1 md:gap-2 ${
-        userRole !== "OWNER" ? "w-1/5" : "w-1/4"
-      }`}
+      className="h-9 gap-2 px-4 text-[13px]"
     >
       {isLoading ? (
         <LoadingState />

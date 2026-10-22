@@ -129,7 +129,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # Storybook build outputs
 .out
@@ -205,3 +204,6 @@ docker-compose.yml
 # Config files
 tailwind.config.performance.ts
 ./tailwind.config.performance.ts
+
+# Local uploads
+/public/uploads

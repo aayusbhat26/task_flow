@@ -21,7 +21,8 @@ export const register = async (req: Request, res: Response) => {
     }
     console.log('✅ Validation passed');
 
-    const { email, password, username } = result.data;
+    const { password, username } = result.data;
+    const email = result.data.email.toLowerCase().trim();
     console.log(`📧 Email: ${email}`);
     console.log(`👤 Username: ${username}`);
 
@@ -116,7 +117,8 @@ export const login = async (req: Request, res: Response) => {
     }
     console.log('✅ Validation passed');
 
-    const { email, password } = result.data;
+    const { password } = result.data;
+    const email = result.data.email.toLowerCase().trim();
     console.log(`📧 Attempting login for email: ${email}`);
 
     // Find user

@@ -39,6 +39,16 @@ const activeUsers = new Map<
   { userId: string; username: string; socketId: string; workspaceId?: string }
 >();
 
+function getRoomPresence(roomId: string) {
+  const unique = new Map<string, { userId: string; username: string }>();
+  for (const user of activeUsers.values()) {
+    if (user.workspaceId === roomId) {
+      unique.set(user.userId, { userId: user.userId, username: user.username });
+    }
+  }
+  return Array.from(unique.values());
+}
+
 io.on("connection", (socket) => {
   console.log(`✅ User connected: ${socket.id}`);
 
@@ -63,11 +73,20 @@ io.on("connection", (socket) => {
 
     // If already in this workspace, do nothing
     if (user.workspaceId === data.workspaceId) {
+      socket.emit("presence-list", getRoomPresence(data.workspaceId));
       return;
     }
 
     if (user.workspaceId) {
-      socket.leave(`workspace:${user.workspaceId}`);
+      const previousRoom = user.workspaceId;
+      socket.leave(`workspace:${previousRoom}`);
+      user.workspaceId = undefined;
+      activeUsers.set(socket.id, user);
+      socket.to(`workspace:${previousRoom}`).emit("user-left", {
+        userId: user.userId,
+        username: user.username,
+      });
+      io.to(`workspace:${previousRoom}`).emit("presence-list", getRoomPresence(previousRoom));
     }
 
     socket.join(`workspace:${data.workspaceId}`);
@@ -78,6 +97,14 @@ io.on("connection", (socket) => {
       userId: user.userId,
       username: user.username,
     });
+    io.to(`workspace:${data.workspaceId}`).emit("presence-list", getRoomPresence(data.workspaceId));
+  });
+
+  // Current online members for a room
+  socket.on("presence-request", (data: { workspaceId: string }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    socket.emit("presence-list", getRoomPresence(data.workspaceId));
   });
 
   // Leave workspace
@@ -93,6 +120,7 @@ io.on("connection", (socket) => {
       userId: user.userId,
       username: user.username,
     });
+    io.to(`workspace:${data.workspaceId}`).emit("presence-list", getRoomPresence(data.workspaceId));
   });
 
   // Media presence
@@ -186,23 +214,25 @@ io.on("connection", (socket) => {
   });
 
   // Typing indicators
-  socket.on("typing-start", (data: { workspaceId: string }) => {
+  socket.on("typing-start", (data: { workspaceId: string; threadId?: string }) => {
     const user = activeUsers.get(socket.id);
     if (!user) return;
     io.to(`workspace:${data.workspaceId}`).emit("user-typing", {
       userId: user.userId,
       username: user.username,
-      isTyping: true
+      isTyping: true,
+      threadId: data.threadId,
     });
   });
 
-  socket.on("typing-stop", (data: { workspaceId: string }) => {
+  socket.on("typing-stop", (data: { workspaceId: string; threadId?: string }) => {
     const user = activeUsers.get(socket.id);
     if (!user) return;
     io.to(`workspace:${data.workspaceId}`).emit("user-typing", {
       userId: user.userId,
       username: user.username,
-      isTyping: false
+      isTyping: false,
+      threadId: data.threadId,
     });
   });
 
@@ -217,6 +247,27 @@ io.on("connection", (socket) => {
     const user = activeUsers.get(socket.id);
     if (!user) return;
     io.to(`workspace:${data.workspaceId}`).emit("message-deleted", data.messageId);
+  });
+
+  // Live poll results
+  socket.on("poll-updated", (data: { workspaceId: string; messageId: string; counts: Record<string, number>; totalVotes: number; isClosed: boolean }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    io.to(`workspace:${data.workspaceId}`).emit("poll-updated", data);
+  });
+
+  // Pinned message / decision updates
+  socket.on("message-pinned", (data: { workspaceId: string; messageId: string; isPinned: boolean; pinnedAt?: string | null }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    io.to(`workspace:${data.workspaceId}`).emit("message-pinned", data);
+  });
+
+  // DSA co-working room changes
+  socket.on("dsa-room-changed", (data: { workspaceId: string; channelId: string }) => {
+    const user = activeUsers.get(socket.id);
+    if (!user) return;
+    io.to(`workspace:${data.workspaceId}`).emit("dsa-room-changed", data);
   });
 
   socket.on("messages-read", (data: { workspaceId: string; messageIds: string[]; readByUserId: string }) => {
@@ -293,13 +344,15 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     const user = activeUsers.get(socket.id);
     if (user) {
-      if (user.workspaceId) {
-        socket.to(`workspace:${user.workspaceId}`).emit("user-left", {
+      const roomId = user.workspaceId;
+      activeUsers.delete(socket.id);
+      if (roomId) {
+        io.to(`workspace:${roomId}`).emit("user-left", {
           userId: user.userId,
           username: user.username,
         });
+        io.to(`workspace:${roomId}`).emit("presence-list", getRoomPresence(roomId));
       }
-      activeUsers.delete(socket.id);
     }
     console.log(`❌ User disconnected: ${socket.id}`);
   });

@@ -44,20 +44,18 @@ export const ReadOnlyContent = ({ task, isSavedByUser, userRole }: Props) => {
     setisSaved((prev) => !prev);
   };
   return (
-    <Card>
-      <CardContent className="py-4 sm:py-6 flex flex-col gap-10 relative">
-        <div className="w-full flex flex-col sm:flex-row items-start sm:gap-4 gap-2">
-          {" "}
+    <Card className="relative mx-auto w-full max-w-4xl">
+      <CardContent className="flex flex-col p-6 sm:p-10">
+        <div className="flex w-full items-start gap-4">
           <ReadOnlyEmoji selectedEmoji={task.emoji} />
-          <div className="w-full flex flex-col gap-2">
-            <div className="w-full flex justify-between items-center">
-              <div className="w-5/6">
-                <p className="text-2xl font-semibold flex items-center gap-2">
-                  {task.title ? task.title : t("NO_TITLE")}{" "}
-                  {isSaved && <Star />}
-                </p>
-              </div>
-              <div className="absolute top-5 right-5 sm:static">
+          <div className="min-w-0 flex-1">
+            <p className="eyebrow mb-2">Task</p>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="flex items-center gap-2 font-display text-4xl leading-[1.08] sm:text-5xl">
+                {task.title ? task.title : t("NO_TITLE")}
+                {isSaved && <Star className="h-5 w-5 text-primary" />}
+              </h1>
+              <div className="shrink-0">
                 <TaskOptions
                   onSetIsSaved={onSetIsSaved}
                   isSaved={isSaved}
@@ -67,12 +65,14 @@ export const ReadOnlyContent = ({ task, isSavedByUser, userRole }: Props) => {
                 />
               </div>
             </div>
-            <div className="w-full gap-1 flex flex-wrap flex-row">
+
+            <div className="mt-5 flex w-full flex-row flex-wrap items-center gap-1.5 border-t border-border pt-4">
               {userRole && userRole !== "READ_ONLY" && (
                 <TaskCompleteButton
                   taskId={task.id}
                   workspaceId={task.workspaceId}
                   isCompleted={task.isCompleted}
+                  className={task.isCompleted ? "pointer-events-none" : ""}
                 />
               )}
               <AssignedToTaskSelector
@@ -89,21 +89,20 @@ export const ReadOnlyContent = ({ task, isSavedByUser, userRole }: Props) => {
           </div>
         </div>
 
-        {/* Task Content Section */}
-        <div className="w-full">
+        <div className="mt-8 w-full border-t border-border pt-6">
           <ReadOnlyContentRenderer content={task.content as any} />
         </div>
       </CardContent>
-      <CardFooter className="w-full flex items-center justify-center gap-2 text-xs">
-        <div className="flex items-center">
-          <p>{t("CREATOR_INFO")}</p>
+      <CardFooter className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-t border-border px-6 py-4 font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground sm:px-10">
+        <div className="flex items-center gap-1">
+          <span>{t("CREATOR_INFO")}</span>
           <UserHoverInfo user={task.creator} />
         </div>
-        <Separator className="hidden h-4 sm:block" orientation="vertical" />
-        <div className="flex items-center">
-          <p>{t("EDITOR_INFO")}</p>
+        <Separator className="hidden h-3 sm:block" orientation="vertical" />
+        <div className="flex items-center gap-1">
+          <span>{t("EDITOR_INFO")}</span>
           <UserHoverInfo user={updater} />
-          <p>{format.relativeTime(dateTime, now)}</p>
+          <span>{format.relativeTime(dateTime, now)}</span>
         </div>
       </CardFooter>
     </Card>
