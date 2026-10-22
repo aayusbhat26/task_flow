@@ -41,5 +41,5 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   fi
 fi
 
-echo "Starting TaskFlow processes (web, auth, socket, caddy) on PORT=${PORT:-10000}..."
+echo "Starting TaskFlow processes (web, auth, socket, proxy) on PORT=${PORT:-10000}..."
 exec supervisord -n -c /app/supervisord.conf

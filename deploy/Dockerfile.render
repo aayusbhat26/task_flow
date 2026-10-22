@@ -48,7 +48,6 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 RUN apk add --no-cache openssl libc6-compat ca-certificates supervisor
-COPY --from=caddy:2-alpine /usr/bin/caddy /usr/bin/caddy
 RUN npm install -g prisma@5.22.0 && npm cache clean --force
 
 WORKDIR /app
@@ -72,12 +71,12 @@ COPY --from=socket-builder --chown=node:node /app/node_modules ./socket/node_mod
 
 # Runtime configuration
 COPY prisma ./prisma
-COPY deploy/Caddyfile.render ./Caddyfile
+COPY deploy/proxy.js ./proxy.js
 COPY deploy/supervisord.conf ./supervisord.conf
 COPY deploy/start-render.sh ./start.sh
 
 RUN mkdir -p /app/web/public/uploads \
-  && sed -i 's/\r$//' /app/start.sh /app/Caddyfile /app/supervisord.conf \
+  && sed -i 's/\r$//' /app/start.sh /app/proxy.js /app/supervisord.conf \
   && chmod +x /app/start.sh \
   && chown -R node:node /app
 
