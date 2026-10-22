@@ -113,14 +113,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Award points for completion
+    let pointsAwarded = 0;
+    let totalPoints: number | null = null;
     if (status === 'COMPLETED' && (!existingProgress || existingProgress.status !== 'COMPLETED')) {
       try {
-        await recordDSAQuestionCompletion(
+        const awarded = await recordDSAQuestionCompletion(
           session.user.id,
           questionId,
           question.title,
           question.difficulty as 'EASY' | 'MEDIUM' | 'HARD'
         );
+        pointsAwarded = awarded.transaction.points;
+        totalPoints = awarded.user.points;
       } catch (error) {
         console.error('Error recording points for DSA question completion:', error);
         // Don't fail the entire request if points recording fails
@@ -130,6 +134,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       progress,
+      pointsAwarded,
+      totalPoints,
       message: status === 'COMPLETED' ? 'Question marked as completed!' : 'Progress updated!'
     });
 

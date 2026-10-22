@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { DSAUploader } from '@/components/dsa/DSAUploader';
 import { ImportedQuestionsTab } from '@/components/dsa/ImportedQuestionsTab';
 import { HandPickedProgressTracker } from '@/components/dsa/HandPickedProgressTracker';
@@ -110,6 +111,7 @@ export default function DSAPracticePage() {
   const [showUploader, setShowUploader] = useState(false);
   const questionsRequestId = useRef(0);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const isInitialLoading = loading && questions.length === 0;
 
   // Fetch import batches
@@ -237,10 +239,17 @@ export default function DSAPracticePage() {
           title: status === 'COMPLETED' ? '🎉 Question Completed!' : 'Success',
           description: data.message
         });
-        
-        // Immediately update the local state to reflect the change
-        setQuestions(prevQuestions => 
-          prevQuestions.map(q => {
+
+        const existing = questions.find((q) => q.id === questionId);
+        const previousStatus = existing?.progress?.[0]?.status;
+        const wasCompleted = previousStatus === 'COMPLETED';
+        const wasInProgress = previousStatus === 'IN_PROGRESS';
+        const isCompleted = status === 'COMPLETED';
+        const isInProgress = status === 'IN_PROGRESS';
+
+        // Update the row in place instead of refetching the whole list.
+        setQuestions(prevQuestions => {
+          const updated = prevQuestions.map(q => {
             if (q.id === questionId) {
               const existingProgress = q.progress?.[0];
               const updatedProgress = {
@@ -252,20 +261,57 @@ export default function DSAPracticePage() {
                 rating: rating || existingProgress?.rating,
                 notes: notes || existingProgress?.notes
               };
-              
+
               return {
                 ...q,
                 progress: [updatedProgress]
               };
             }
             return q;
-          })
-        );
-        
-        // Refresh both filtered questions and overall stats
-        await fetchQuestions();
-        await fetchOverallStats();
-        
+          });
+
+          const matchesFilter =
+            selectedStatus === 'all' || selectedStatus.toUpperCase() === status;
+          return matchesFilter ? updated : updated.filter(q => q.id !== questionId);
+        });
+
+        setOverallStats(prev => {
+          const completed = Math.max(0, prev.completed + (isCompleted && !wasCompleted ? 1 : 0) - (!isCompleted && wasCompleted ? 1 : 0));
+          const inProgress = Math.max(0, prev.inProgress + (isInProgress && !wasInProgress ? 1 : 0) - (!isInProgress && wasInProgress ? 1 : 0));
+          return {
+            total: prev.total,
+            completed,
+            inProgress,
+            completionPercentage: prev.total ? Math.round((completed / prev.total) * 100) : 0,
+          };
+        });
+
+        if (existing) {
+          const topic = existing.topic;
+          setTopicProgress(prev => prev.map(t => {
+            if (t.topic !== topic) return t;
+            const completed = Math.max(0, t.completed + (isCompleted && !wasCompleted ? 1 : 0) - (!isCompleted && wasCompleted ? 1 : 0));
+            return { ...t, completed, percentage: t.total ? Math.round((completed / t.total) * 100) : 0 };
+          }));
+        }
+
+        if (data.pointsAwarded > 0) {
+          queryClient.setQueriesData<any>({ queryKey: ['userPoints'] }, (old: any) => {
+            if (!old?.user) return old;
+            return {
+              ...old,
+              user: {
+                ...old.user,
+                totalPoints:
+                  typeof data.totalPoints === 'number'
+                    ? data.totalPoints
+                    : old.user.totalPoints + data.pointsAwarded,
+              },
+            };
+          });
+          queryClient.invalidateQueries({ queryKey: ['userPoints'] });
+        }
+
         // Notify the dashboard and other trackers that progress changed.
         window.dispatchEvent(new CustomEvent('dsaProgressUpdated'));
       } else {
