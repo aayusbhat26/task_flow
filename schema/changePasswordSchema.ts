@@ -17,3 +17,15 @@ export const changePasswordSchema = z
   });
 
 export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
+
+export const setPasswordSchema = z
+  .object({
+    new_password: password,
+    repeat_password: z.string(),
+  })
+  .refine((data) => data.new_password === data.repeat_password, {
+    message: "SCHEMA.PASSWORD_NOT_THE_SAME",
+    path: ["repeat_password"],
+  });
+
+export type SetPasswordSchema = z.infer<typeof setPasswordSchema>;

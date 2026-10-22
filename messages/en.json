@@ -542,12 +542,14 @@
     "SECURITY": {
       "TITLE": "Security",
       "DESC": "Change the password used to sign in to this account. Use at least 10 characters with upper and lower case letters and a number.",
+      "DESC_SET": "Set a password for this account to sign in with email as well as Google or GitHub. Use at least 10 characters with upper and lower case letters and a number.",
       "WARNING": {
         "FIRST": "Password changes only apply to accounts created with email and password. ",
         "SECOND": "Accounts created through Google or GitHub ",
         "THIRD": "must manage their password with that provider. ",
         "FOURTH": "",
-        "FIFTH": ""
+        "FIFTH": "",
+        "OAUTH": "This account currently signs in with Google or GitHub. Setting a password lets you sign in with email too."
       },
       "FORM": {
         "CURRENT": {
@@ -563,7 +565,9 @@
           "PLACEHOLDER": "Confirm password"
         },
         "BTN": "Change password",
-        "BTN_PENDING": "Changing password"
+        "BTN_PENDING": "Changing password",
+        "BTN_SET": "Set password",
+        "BTN_SET_PENDING": "Setting password"
       }
     },
     "SOUND": {

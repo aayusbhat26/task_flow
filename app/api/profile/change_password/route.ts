@@ -1,6 +1,9 @@
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { changePasswordSchema } from "@/schema/changePasswordSchema";
+import {
+  changePasswordSchema,
+  setPasswordSchema,
+} from "@/schema/changePasswordSchema";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 
@@ -14,21 +17,9 @@ export async function POST(request: Request) {
     });
   }
 
-  const body: unknown = await request.json();
-
-  const result = changePasswordSchema.safeParse(body);
-
-  if (!result.success) {
-    return NextResponse.json("ERRORS.WRONG_DATA", { status: 401 });
-  }
-
-  const { new_password, current_password } = result.data;
-
   try {
     const user = await db.user.findUnique({
-      where: {
-        id: session.user.id,
-      },
+      where: { id: session.user.id },
     });
 
     if (!user) {
@@ -38,28 +29,42 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!user.hashedPassword)
-      return new NextResponse("ERRORS.NO_PASSWORD", { status: 406 });
+    const body: unknown = await request.json();
+    let newPassword: string;
 
-    const passwordMatch = await bcrypt.compare(
-      current_password,
-      user.hashedPassword
-    );
-    if (!passwordMatch)
-      return new NextResponse("ERRORS.PASSWORD_MISMATCH", { status: 402 });
+    if (user.hashedPassword) {
+      const result = changePasswordSchema.safeParse(body);
+      if (!result.success) {
+        return NextResponse.json("ERRORS.WRONG_DATA", { status: 401 });
+      }
 
-    const hashedPassword = await bcrypt.hash(new_password, 10);
+      const passwordMatch = await bcrypt.compare(
+        result.data.current_password,
+        user.hashedPassword
+      );
+      if (!passwordMatch) {
+        return new NextResponse("ERRORS.PASSWORD_MISMATCH", { status: 402 });
+      }
 
-    const updatedUser = await db.user.update({
-      where: {
-        id: session.user.id,
-      },
-      data: {
-        hashedPassword,
-      },
+      newPassword = result.data.new_password;
+    } else {
+      // OAuth-only accounts have no password to confirm yet.
+      const result = setPasswordSchema.safeParse(body);
+      if (!result.success) {
+        return NextResponse.json("ERRORS.WRONG_DATA", { status: 401 });
+      }
+
+      newPassword = result.data.new_password;
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { hashedPassword },
     });
 
-    return NextResponse.json(updatedUser, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (_) {
     return NextResponse.json("ERRORS.DB_ERROR", { status: 405 });
   }

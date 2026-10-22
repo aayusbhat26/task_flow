@@ -2,7 +2,7 @@ import Warning from "@/components/ui/warning";
 import { useTranslations } from "next-intl";
 import { ChangePassword } from "./ChangePassword";
 
-export const SecurityCard = () => {
+export const SecurityCard = ({ hasPassword }: { hasPassword: boolean }) => {
   const t = useTranslations("SETTINGS.SECURITY");
 
   return (
@@ -13,18 +13,16 @@ export const SecurityCard = () => {
           {t("TITLE")}
         </h1>
         <p className="mt-3 max-w-[560px] text-sm leading-relaxed text-muted-foreground">
-          {t("DESC")}
+          {t(hasPassword ? "DESC" : "DESC_SET")}
         </p>
       </div>
-      <Warning blue className="mt-6">
-        <p>
-          {t("WARNING.FIRST")}
-          {t("WARNING.SECOND")}
-          {t("WARNING.THIRD")}
-        </p>
-      </Warning>
+      {!hasPassword && (
+        <Warning blue className="mt-6">
+          <p>{t("WARNING.OAUTH")}</p>
+        </Warning>
+      )}
       <div className="mt-8">
-        <ChangePassword />
+        <ChangePassword hasPassword={hasPassword} />
       </div>
     </div>
   );

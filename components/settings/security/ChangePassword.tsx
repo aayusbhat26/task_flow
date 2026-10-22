@@ -14,20 +14,25 @@ import { LoadingState } from "@/components/ui/loadingState";
 import { useToast } from "@/hooks/use-toast";
 import {
   changePasswordSchema,
-  ChangePasswordSchema,
+  setPasswordSchema,
 } from "@/schema/changePasswordSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User } from "@prisma/client";
 import { useMutation } from "@tanstack/react-query";
-import axios, { AxiosError, AxiosResponse } from "axios";
+import axios, { AxiosError } from "axios";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-export const ChangePassword = () => {
+type FormValues = {
+  current_password?: string;
+  new_password: string;
+  repeat_password: string;
+};
+
+export const ChangePassword = ({ hasPassword }: { hasPassword: boolean }) => {
   const t = useTranslations("SETTINGS.SECURITY.FORM");
-  const form = useForm<ChangePasswordSchema>({
-    resolver: zodResolver(changePasswordSchema),
+  const form = useForm<FormValues>({
+    resolver: zodResolver(hasPassword ? changePasswordSchema : setPasswordSchema) as any,
     defaultValues: {
       current_password: "",
       new_password: "",
@@ -40,11 +45,11 @@ export const ChangePassword = () => {
   const router = useRouter();
 
   const { mutate: changePassword, isPending } = useMutation({
-    mutationFn: async (formData: ChangePasswordSchema) => {
-      const { data } = (await axios.post(
+    mutationFn: async (formData: FormValues) => {
+      const { data } = await axios.post(
         "/api/profile/change_password",
         formData
-      )) as AxiosResponse<User>;
+      );
 
       return data;
     },
@@ -66,37 +71,35 @@ export const ChangePassword = () => {
     mutationKey: ["changePassword"],
   });
 
-  const onSubmit = (data: ChangePasswordSchema) => {
-    changePassword(data);
-  };
-
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit((data) => changePassword(data))}
         className="space-y-6 p-0 sm:p-0 w-full max-w-md"
       >
         <div className="space-y-2 sm:space-y-4 w-full">
-          <FormField
-            control={form.control}
-            name="current_password"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel className="text-muted-foreground text-xs uppercase">
-                  {t("CURRENT.LABEL")}
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    className="bg-muted"
-                    placeholder={t("CURRENT.PLACEHOLDER")}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {hasPassword && (
+            <FormField
+              control={form.control}
+              name="current_password"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel className="text-muted-foreground text-xs uppercase">
+                    {t("CURRENT.LABEL")}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      className="bg-muted"
+                      placeholder={t("CURRENT.PLACEHOLDER")}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <FormField
             control={form.control}
             name="new_password"
@@ -140,9 +143,11 @@ export const ChangePassword = () => {
         </div>
         <Button disabled={isPending} className="text-white">
           {isPending ? (
-            <LoadingState loadingText={t("BTN_PENDING")} />
+            <LoadingState
+              loadingText={t(hasPassword ? "BTN_PENDING" : "BTN_SET_PENDING")}
+            />
           ) : (
-            t("BTN")
+            t(hasPassword ? "BTN" : "BTN_SET")
           )}
         </Button>
       </form>
