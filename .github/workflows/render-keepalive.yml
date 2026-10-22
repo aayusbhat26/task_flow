@@ -2,8 +2,9 @@ name: Render keepalive
 
 on:
   schedule:
-    # GitHub's minimum scheduled interval is 5 minutes. Runs are best-effort
-    # and can be delayed; use an external uptime monitor as the primary ping.
+    # GitHub's minimum scheduled interval is 5 minutes. Scheduled runs are
+    # best-effort and can be delayed; an external uptime monitor is the more
+    # reliable primary ping. Render sleeps after 15 minutes of inactivity.
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
@@ -21,14 +22,10 @@ jobs:
     steps:
       - name: Ping Render liveness endpoint
         env:
-          RENDER_LIVE_URL: ${{ secrets.RENDER_LIVE_URL }}
+          # Override with a repository secret when the service URL changes.
+          RENDER_LIVE_URL: ${{ secrets.RENDER_LIVE_URL || 'https://taskflow-render.onrender.com/api/live' }}
         run: |
-          if [ -z "$RENDER_LIVE_URL" ]; then
-            echo "RENDER_LIVE_URL is not set. Add it under Settings → Secrets and variables → Actions."
-            echo "Expected value: https://<service>.onrender.com/api/live"
-            exit 0
-          fi
-
+          echo "Pinging $RENDER_LIVE_URL"
           curl --fail --silent --show-error \
             --retry 3 --retry-delay 5 --max-time 20 \
             "$RENDER_LIVE_URL" >/dev/null
