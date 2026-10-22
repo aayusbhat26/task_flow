@@ -2,8 +2,13 @@
  * Socket.io utility functions for better error handling and diagnostics
  */
 
+const defaultSocketUrl =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3002";
+
 export const SOCKET_CONFIG = {
-  url: 'http://localhost:8080',
+  url: defaultSocketUrl,
   options: {
     transports: ['websocket', 'polling'],
     autoConnect: true,
@@ -36,7 +41,9 @@ export const handleSocketError = (error: Error) => {
 export const checkSocketServerHealth = async (): Promise<boolean> => {
   try {
     // Try to fetch from socket.io health endpoint
-    const response = await fetch('http://localhost:8080/socket.io/');
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SOCKET_URL || defaultSocketUrl}/socket.io/`
+    );
     return response.ok;
   } catch (error) {
     console.warn('Socket server health check failed:', error);

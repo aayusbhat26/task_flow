@@ -43,6 +43,7 @@ next-env.d.ts
 # Markdown documentation files (keep README.md)
 *.md
 !README.md
+!deploy/README.md
 
 # IDE and editor files
 .vscode/
@@ -143,6 +144,11 @@ temp/
 *.bat
 *.cmd
 *.sh
+!deploy/*.sh
+
+# Deployment state and secrets
+deploy/.env
+deploy/backups/
 
 # Database
 *.sqlite
@@ -155,7 +161,7 @@ temp/
 
 # Docker
 docker-compose.override.yml
-.dockerignore
+!/.dockerignore
 
 # Local configuration files
 .yarnrc

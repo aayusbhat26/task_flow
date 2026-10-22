@@ -73,7 +73,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
     // Create real socket.io connection
     console.log('🔗 Socket: Connecting to chat server...');
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8080';
+    const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL ||
+      (typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost:3002");
     const socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
