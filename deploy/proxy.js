@@ -42,7 +42,10 @@ function requestHeaders(req) {
   headers['x-forwarded-for'] = headers['x-forwarded-for']
     ? `${headers['x-forwarded-for']}, ${remote}`
     : remote;
-  headers['x-forwarded-proto'] = headers['x-forwarded-proto'] || 'https';
+  const behindProxy = Boolean(req.headers['x-forwarded-host']) || Boolean(req.headers['x-forwarded-proto']);
+  headers['x-forwarded-proto'] =
+    headers['x-forwarded-proto'] ||
+    (behindProxy || req.socket.encrypted ? 'https' : 'http');
   headers['x-forwarded-host'] = headers['x-forwarded-host'] || req.headers.host || '';
   return headers;
 }
