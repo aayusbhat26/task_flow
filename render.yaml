@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: taskflow-demo
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./deploy/Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /api/live
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: RUN_MIGRATIONS
+        value: "true"
+      - key: BILLING_ALLOW_TEST_PAYMENTS
+        value: "false"
+      - key: AUTH_SERVICE_URL
+        value: http://127.0.0.1:3003
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true

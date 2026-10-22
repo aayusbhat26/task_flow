@@ -1,0 +1,87 @@
+# syntax=docker/dockerfile:1.7
+# Single-container image for Render Free.
+# Runs Next.js, the auth service, Socket.IO, Caddy, and Prisma migrations
+# inside one free web service because Render's 750 instance hours are
+# shared across all free services in a workspace.
+
+FROM node:20-alpine AS web-deps
+RUN apk add --no-cache libc6-compat openssl ca-certificates
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci --legacy-peer-deps
+
+FROM web-deps AS web-builder
+WORKDIR /app
+COPY . .
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS=--max-old-space-size=2048
+RUN npx prisma generate
+RUN npm run build:direct
+
+FROM node:20-alpine AS auth-builder
+RUN apk add --no-cache openssl libc6-compat ca-certificates make gcc g++ python3
+WORKDIR /app
+# Keep build stages sequential on Render's memory-limited builder.
+COPY --from=web-builder /app/package.json /tmp/web-build-complete
+COPY auth-service/package.json auth-service/package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci --ignore-scripts --legacy-peer-deps
+RUN npm rebuild bcrypt --build-from-source
+RUN npx prisma generate --schema=./prisma/schema.prisma
+COPY auth-service/src ./src
+COPY auth-service/tsconfig.json ./
+RUN npm run build
+
+FROM node:20-alpine AS socket-builder
+RUN apk add --no-cache openssl libc6-compat ca-certificates
+WORKDIR /app
+# Keep the socket build after the auth build to reduce peak build memory.
+COPY --from=auth-builder /app/package.json /tmp/auth-build-complete
+COPY socket-server/package.json socket-server/package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci --ignore-scripts --legacy-peer-deps
+RUN npx prisma generate --schema=./prisma/schema.prisma
+COPY socket-server/server.ts ./server.ts
+COPY socket-server/tsconfig.json ./tsconfig.json
+RUN npm run build
+
+FROM node:20-alpine AS runner
+RUN apk add --no-cache openssl libc6-compat ca-certificates supervisor
+COPY --from=caddy:2-alpine /usr/bin/caddy /usr/bin/caddy
+RUN npm install -g prisma@5.22.0 && npm cache clean --force
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Next.js standalone, static assets and public files
+COPY --from=web-builder --chown=node:node /app/.next/standalone ./web
+COPY --from=web-builder --chown=node:node /app/.next/static ./web/.next/static
+COPY --from=web-builder --chown=node:node /app/public ./web/public
+COPY --from=web-builder --chown=node:node /app/node_modules/.prisma ./web/node_modules/.prisma
+COPY --from=web-builder --chown=node:node /app/node_modules/@prisma/client ./web/node_modules/@prisma/client
+
+# Auth service
+COPY --from=auth-builder --chown=node:node /app/dist ./auth/dist
+COPY --from=auth-builder --chown=node:node /app/node_modules ./auth/node_modules
+
+# Socket service
+COPY --from=socket-builder --chown=node:node /app/dist ./socket/dist
+COPY --from=socket-builder --chown=node:node /app/node_modules ./socket/node_modules
+
+# Runtime configuration
+COPY prisma ./prisma
+COPY deploy/Caddyfile.render ./Caddyfile
+COPY deploy/supervisord.conf ./supervisord.conf
+COPY deploy/start-render.sh ./start.sh
+
+RUN mkdir -p /app/web/public/uploads \
+  && sed -i 's/\r$//' /app/start.sh /app/Caddyfile /app/supervisord.conf \
+  && chmod +x /app/start.sh \
+  && chown -R node:node /app
+
+EXPOSE 10000
+
+CMD ["/app/start.sh"]
