@@ -74,6 +74,8 @@ COPY prisma ./prisma
 COPY deploy/proxy.js ./proxy.js
 COPY deploy/supervisord.conf ./supervisord.conf
 COPY deploy/start-render.sh ./start.sh
+COPY deploy/seed-curated.js ./web/seed-curated.js
+COPY prisma/seed-data/curated-dsa-questions.json ./web/curated-dsa-questions.json
 
 RUN mkdir -p /app/web/public/uploads \
   && sed -i 's/\r$//' /app/start.sh /app/proxy.js /app/supervisord.conf \

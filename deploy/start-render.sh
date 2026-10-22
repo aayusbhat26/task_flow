@@ -41,5 +41,12 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
   fi
 fi
 
+if [ "${SEED_CURATED_QUESTIONS:-true}" = "true" ]; then
+  echo "Seeding curated DSA questions if needed..."
+  if ! (cd /app/web && node seed-curated.js); then
+    echo "Warning: curated DSA seeding failed; continuing startup." >&2
+  fi
+fi
+
 echo "Starting TaskFlow processes (web, auth, socket, proxy) on PORT=${PORT:-10000}..."
 exec supervisord -n -c /app/supervisord.conf
