@@ -40,14 +40,18 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
       clientId: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
       async profile(profile) {
-        const username = generateFromEmail(profile.email, 5);
+        const email =
+          typeof profile.email === "string" && profile.email.length > 0
+            ? profile.email
+            : `${profile.id}+${profile.login}@users.noreply.github.com`;
+        const username = profile.login || generateFromEmail(email, 5);
         const fullName = profile.name?.split(" ") ?? [];
         return {
           id: profile.id,
-          username: profile.login ? profile.login : username,
-          name: fullName.at(0),
-          surname: fullName.at(1),
-          email: profile.email,
+          username,
+          name: fullName.at(0) ?? profile.login ?? null,
+          surname: fullName.at(1) ?? "",
+          email,
           image: profile.avatar_url,
         };
       },
