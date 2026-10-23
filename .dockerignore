@@ -12,4 +12,3 @@ deploy/.env
 deploy/backups
 public/uploads
 README.md
-deploy/README.md
