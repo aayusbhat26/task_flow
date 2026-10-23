@@ -40,11 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Markdown documentation files (keep README.md)
+# Markdown documentation files (keep the root README)
 *.md
 !README.md
-!deploy/README.md
-!deploy/RENDER.md
 
 # IDE and editor files
 .vscode/
